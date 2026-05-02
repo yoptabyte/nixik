@@ -447,6 +447,9 @@ in
                 centaur-tabs-cycle-scope 'tabs)
           (centaur-tabs-mode 1)
 
+          ;; Background colour for the entire tab bar (including empty space)
+          (setq centaur-tabs-background-color "#28261F")
+
           ;; K380 Graphite theme colours
           ;; Remove white background on empty tab-bar space
           (set-face-attribute 'header-line nil :background "#28261F")
