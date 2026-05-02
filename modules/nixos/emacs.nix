@@ -11,8 +11,8 @@ let
 
     # Evil
     evil
-    evil-leader
     evil-collection
+    general
 
     # Editing
     drag-stuff
@@ -104,10 +104,99 @@ in
         (setq use-package-always-ensure nil)
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        ;; Evil Mode + Leader
+        ;; General (leader key framework)
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        (setq my/leader-key " ")
+        (use-package general
+          :ensure nil
+          :demand t
+          :config
+          (general-evil-setup t)
 
+          ;; Global leader (SPC in normal mode)
+          (general-create-definer my/leader-keys
+            :states '(normal visual emacs)
+            :keymaps 'override
+            :prefix "SPC")
+
+          ;; Local leader (, in normal mode) — for mode-specific
+          (general-create-definer my/local-leader-keys
+            :states '(normal visual emacs)
+            :keymaps 'override
+            :prefix ",")
+
+          ;; Window prefix
+          (my/leader-keys
+            "w" '(:ignore t :which-key "window")
+            "wh" '(evil-window-left :which-key "left")
+            "wj" '(evil-window-down :which-key "down")
+            "wk" '(evil-window-up :which-key "up")
+            "wl" '(evil-window-right :which-key "right")
+            "ww" '(other-window :which-key "other")
+            "wH" '((lambda () (interactive) (evil-window-decrease-width 2)) :which-key "decrease width")
+            "wJ" '((lambda () (interactive) (evil-window-increase-height 2)) :which-key "increase height")
+            "wK" '((lambda () (interactive) (evil-window-decrease-height 2)) :which-key "decrease height")
+            "wL" '((lambda () (interactive) (evil-window-increase-width 2)) :which-key "increase width")
+            "w|" '(evil-window-vsplit :which-key "vsplit")
+            "w-" '(evil-window-split :which-key "split")
+            "wd" '(evil-window-delete :which-key "delete"))
+
+          ;; Buffer prefix
+          (my/leader-keys
+            "b" '(:ignore t :which-key "buffer")
+            "bb" '(consult-buffer :which-key "switch")
+            "bn" '(next-buffer :which-key "next")
+            "bp" '(previous-buffer :which-key "prev")
+            "bd" '(kill-buffer :which-key "kill")
+            "br" '(revert-buffer :which-key "revert"))
+
+          ;; File prefix
+          (my/leader-keys
+            "f" '(:ignore t :which-key "file")
+            "ff" '(consult-find :which-key "find")
+            "fw" '(consult-ripgrep :which-key "grep")
+            "fb" '(consult-buffer :which-key "buffer")
+            "fo" '(consult-recent-file :which-key "recent")
+            "fr" '(consult-recent-file :which-key "recent")
+            "fs" '(save-buffer :which-key "save"))
+
+          ;; Open prefix
+          (my/leader-keys
+            "o" '(:ignore t :which-key "open")
+            "ot" '(treemacs :which-key "treemacs")
+            "oe" '(eval-expression :which-key "eval"))
+
+          ;; Git prefix
+          (my/leader-keys
+            "g" '(:ignore t :which-key "git")
+            "gg" '(magit-status :which-key "status")
+            "gb" '(magit-blame-addition :which-key "blame")
+            "gc" '(magit-commit-create :which-key "commit")
+            "gd" '(magit-diff-working-tree :which-key "diff")
+            "gl" '(magit-log-buffer-file :which-key "log"))
+
+          ;; LSP prefix (Eglot)
+          (my/leader-keys
+            "l" '(:ignore t :which-key "lsp")
+            "la" '(eglot-code-actions :which-key "actions")
+            "ld" '(xref-find-definitions :which-key "definition")
+            "lD" '(eglot-find-declaration :which-key "declaration")
+            "lf" '(eglot-format :which-key "format")
+            "lh" '(eldoc-doc-buffer :which-key "hover doc")
+            "li" '(eglot-find-implementation :which-key "implementation")
+            "lr" '(xref-find-references :which-key "references")
+            "lR" '(eglot-rename :which-key "rename")
+            "ls" '(eldoc :which-key "signature")
+            "lt" '(eglot-find-typeDefinition :which-key "type def"))
+
+          ;; Direct keys (no prefix)
+          (my/leader-keys
+            "q" '(quit-window :which-key "quit")
+            "Q" '(save-buffers-kill-terminal :which-key "quit emacs")
+            "/" '(comment-line :which-key "comment")))
+
+        ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        ;; Evil Mode
+        ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         (use-package evil
           :ensure nil
           :demand t
@@ -155,86 +244,6 @@ in
           (define-key evil-normal-state-map (kbd "C-+") 'text-scale-increase)
           (define-key evil-normal-state-map (kbd "C--") 'text-scale-decrease)
           (define-key evil-normal-state-map (kbd "C-0") 'text-scale-reset))
-
-        (use-package evil-leader
-          :ensure nil
-          :demand t
-          :after evil
-          :config
-          (global-evil-leader-mode)
-          (setq evil-leader/leader my/leader-key)
-          (setq evil-leader/in-all-states t)
-
-          ;; Quit / Save
-          (evil-leader/set-key "q" 'quit-window)
-          (evil-leader/set-key "Q" 'save-buffers-kill-terminal)
-          (evil-leader/set-key "w" 'save-buffer)
-
-          ;; Window navigation (SPC w prefix)
-          (evil-leader/set-key "wh" 'evil-window-left)
-          (evil-leader/set-key "wj" 'evil-window-down)
-          (evil-leader/set-key "wk" 'evil-window-up)
-          (evil-leader/set-key "wl" 'evil-window-right)
-          (evil-leader/set-key "ww" 'other-window)
-
-          ;; Resize windows
-          (evil-leader/set-key "wH" (lambda () (interactive) (evil-window-decrease-width 2)))
-          (evil-leader/set-key "wJ" (lambda () (interactive) (evil-window-increase-height 2)))
-          (evil-leader/set-key "wK" (lambda () (interactive) (evil-window-decrease-height 2)))
-          (evil-leader/set-key "wL" (lambda () (interactive) (evil-window-increase-width 2)))
-
-          ;; Splits
-          (evil-leader/set-key "|" 'evil-window-vsplit)
-          (evil-leader/set-key "-" 'evil-window-split)
-
-          ;; Buffers
-          (evil-leader/set-key "n" 'next-buffer)
-          (evil-leader/set-key "p" 'previous-buffer)
-          (evil-leader/set-key "d" 'kill-buffer)
-          (evil-leader/set-key "bn" 'next-buffer)
-          (evil-leader/set-key "bp" 'previous-buffer)
-          (evil-leader/set-key "bd" 'kill-buffer)
-          (evil-leader/set-key "bb" 'consult-buffer)
-
-          ;; Find (consult) — Doom-style SPC f prefix
-          (evil-leader/set-key "ff" 'consult-find)
-          (evil-leader/set-key "fw" 'consult-ripgrep)
-          (evil-leader/set-key "fb" 'consult-buffer)
-          (evil-leader/set-key "fh" 'consult-info)
-          (evil-leader/set-key "fo" 'consult-recent-file)
-          (evil-leader/set-key "fk" 'consult-yank-pop)
-          (evil-leader/set-key "fm" 'consult-mark)
-          (evil-leader/set-key "fr" 'consult-register)
-          (evil-leader/set-key "ft" 'consult-theme)
-          (evil-leader/set-key "fd" 'treemacs)
-
-          ;; Open — Doom-style SPC o prefix
-          (evil-leader/set-key "o" 'treemacs)
-
-          ;; Git (magit)
-          (evil-leader/set-key "gg" 'magit-status)
-          (evil-leader/set-key "gs" 'magit-status)
-          (evil-leader/set-key "gb" 'magit-blame-addition)
-          (evil-leader/set-key "gc" 'magit-commit-create)
-          (evil-leader/set-key "gl" 'magit-log-buffer-file)
-          (evil-leader/set-key "gd" 'magit-diff-working-tree)
-          (evil-leader/set-key "gj" 'magit-section-forward-sibling)
-          (evil-leader/set-key "gk" 'magit-section-backward-sibling)
-
-          ;; LSP (Eglot)
-          (evil-leader/set-key "la" 'eglot-code-actions)
-          (evil-leader/set-key "ld" 'xref-find-definitions)
-          (evil-leader/set-key "lD" 'eglot-find-declaration)
-          (evil-leader/set-key "lf" 'eglot-format)
-          (evil-leader/set-key "lh" 'eldoc-doc-buffer)
-          (evil-leader/set-key "li" 'eglot-find-implementation)
-          (evil-leader/set-key "lr" 'xref-find-references)
-          (evil-leader/set-key "lR" 'eglot-rename)
-          (evil-leader/set-key "ls" 'eldoc)
-          (evil-leader/set-key "lt" 'eglot-find-typeDefinition)
-
-          ;; Comment
-          (evil-leader/set-key "/" 'comment-line))
 
         (use-package evil-collection
           :ensure nil
@@ -480,9 +489,10 @@ in
                 (json-mode . json-ts-mode)))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        ;; Server
+        ;; Server (only if not already running)
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        (server-start)
+        (unless (server-running-p)
+          (server-start))
 
         (provide 'init)
         ;;; init.el ends here
