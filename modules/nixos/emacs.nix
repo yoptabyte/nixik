@@ -448,14 +448,17 @@ in
           (centaur-tabs-mode 1)
 
           ;; K380 Graphite theme colours
+          ;; Remove white background on empty tab-bar space
+          (set-face-attribute 'header-line nil :background "#28261F")
+
           (set-face-attribute 'centaur-tabs-default nil
             :background "#28261F" :foreground "#C8C8C0")
           (set-face-attribute 'centaur-tabs-selected nil
-            :background "#302E26" :foreground "#C8C8C0" :bold t)
+            :background "#3D3B30" :foreground "#F0C040" :bold t)
           (set-face-attribute 'centaur-tabs-unselected nil
-            :background "#28261F" :foreground "#888882")
+            :background "#28261F" :foreground "#5A5848")
           (set-face-attribute 'centaur-tabs-selected-modified nil
-            :background "#302E26" :foreground "#E8A020" :bold t)
+            :background "#3D3B30" :foreground "#E8A020" :bold t)
           (set-face-attribute 'centaur-tabs-unselected-modified nil
             :background "#28261F" :foreground "#E8A020")
           (set-face-attribute 'centaur-tabs-active-bar-face nil
