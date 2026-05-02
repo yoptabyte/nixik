@@ -2,6 +2,9 @@
 {
   # Non-flake Nix settings
   nix.settings = {
+    # Enable nix command and flakes features (required by Nilla CLI)
+    experimental-features = [ "nix-command" "flakes" ];
+
     # Binary cache for llm-agents
     extra-substituters = [
       "https://cache.numtide.com"
