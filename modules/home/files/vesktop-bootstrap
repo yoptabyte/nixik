@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+set -eu
+
+VESKTOP_BIN=/run/current-system/sw/bin/vesktop
+CURL_BIN=/run/current-system/sw/bin/curl
+BASE_URL=https://github.com/Vendicated/Vencord/releases/download/devbuild
+DATA_DIR="$HOME/.config/vesktop/sessionData/vencordFiles"
+REQUIRED_FILES="vencordDesktopMain.js vencordDesktopPreload.js vencordDesktopRenderer.js vencordDesktopRenderer.css"
+
+missing=0
+for file in $REQUIRED_FILES; do
+  if [ ! -s "$DATA_DIR/$file" ]; then
+    missing=1
+    break
+  fi
+done
+
+if [ "$missing" -eq 1 ]; then
+  mkdir -p "$DATA_DIR"
+  [ -f "$DATA_DIR/package.json" ] || printf '{}' > "$DATA_DIR/package.json"
+
+  for file in $REQUIRED_FILES; do
+    if [ ! -s "$DATA_DIR/$file" ]; then
+      "$CURL_BIN" -L --fail --retry 3 -o "$DATA_DIR/$file" "$BASE_URL/$file"
+    fi
+  done
+fi
+
+exec "$VESKTOP_BIN" "$@"

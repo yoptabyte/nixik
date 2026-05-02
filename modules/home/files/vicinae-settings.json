@@ -1,0 +1,45 @@
+{
+  "telemetry": {
+    "system_info": false
+  },
+  "search_files_in_root": false,
+  "pop_to_root_on_close": false,
+  "shell_integration": {
+    "enabled": true
+  },
+  "font": {
+    "normal": {
+      "family": "JetBrainsMono Nerd Font",
+      "size": 11.0
+    }
+  },
+  "theme": {
+    "dark": {
+      "name": "amber-night",
+      "icon_theme": "auto"
+    },
+    "light": {
+      "name": "amber-day",
+      "icon_theme": "auto"
+    }
+  },
+  "launcher_window": {
+    "opacity": 0.96,
+    "dim_around": false,
+    "client_side_decorations": {
+      "enabled": true,
+      "rounding": 18,
+      "border_width": 1
+    },
+    "compact_mode": {
+      "enabled": false
+    },
+    "size": {
+      "width": 900,
+      "height": 560
+    },
+    "layer_shell": {
+      "enabled": false
+    }
+  }
+}

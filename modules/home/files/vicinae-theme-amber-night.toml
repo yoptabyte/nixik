@@ -1,0 +1,23 @@
+[meta]
+version = 1
+name = "Amber Night"
+description = "Warm dark theme that matches the shell palette"
+variant = "dark"
+inherits = "vicinae-dark"
+
+[colors.core]
+background = "#1c1c1c"
+foreground = "#c8c8c0"
+secondary_background = "#302e26"
+border = "#3a3a38"
+accent = "#f0c040"
+
+[colors.accents]
+blue = "#888882"
+green = "#a8d8a0"
+magenta = "#c79ab1"
+orange = "#e8a020"
+purple = "#8d7aa8"
+red = "#c86f4a"
+yellow = "#f0c040"
+cyan = "#7db7b3"

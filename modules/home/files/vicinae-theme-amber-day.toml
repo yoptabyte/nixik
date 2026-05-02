@@ -1,0 +1,23 @@
+[meta]
+version = 1
+name = "Amber Day"
+description = "Warm light theme paired with amber accents"
+variant = "light"
+inherits = "vicinae-light"
+
+[colors.core]
+background = "#f3efe3"
+foreground = "#2b2822"
+secondary_background = "#e7decb"
+border = "#c9bda6"
+accent = "#a77400"
+
+[colors.accents]
+blue = "#6c7a89"
+green = "#6c8b5d"
+magenta = "#a0678a"
+orange = "#c5852b"
+purple = "#7f6aa8"
+red = "#b15d3f"
+yellow = "#a77400"
+cyan = "#4e8b8f"

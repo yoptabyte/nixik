@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Vinciane launcher wrapper that uses shell to resolve PATH
+# This fixes execve: No such file or directory errors for programs in Nix store
+exec /bin/sh -c "$@"

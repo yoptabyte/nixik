@@ -1,0 +1,15 @@
+# Build results
+result
+result-*
+
+# Nix
+*.lock
+
+# Temporary files
+*~
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
