@@ -458,7 +458,7 @@ in
             :background "#302E26" :foreground "#E8A020" :bold t)
           (set-face-attribute 'centaur-tabs-unselected-modified nil
             :background "#28261F" :foreground "#E8A020")
-          (set-face-attribute 'centaur-active-bar-face nil
+          (set-face-attribute 'centaur-tabs-active-bar-face nil
             :background "#F0C040" :height 3)
           :bind
           ("C-<prior>" . centaur-tabs-backward)
