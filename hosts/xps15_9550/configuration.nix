@@ -468,6 +468,22 @@ in
 
       # i3status-rust config
       ".config/i3status-rust/config.toml".text = ''
+        [theme]
+        name = "plain"
+        [theme.overrides]
+        idle_bg = "#282828"
+        idle_fg = "#f0c040"
+        info_bg = "#282828"
+        info_fg = "#f0c040"
+        good_bg = "#282828"
+        good_fg = "#f0c040"
+        warning_bg = "#282828"
+        warning_fg = "#e8a020"
+        critical_bg = "#282828"
+        critical_fg = "#fb4934"
+        separator_bg = "#282828"
+        separator_fg = "#f0c040"
+
         [[block]]
         block = "cpu"
         interval = 1
@@ -487,6 +503,10 @@ in
 
         [[block]]
         block = "sound"
+
+        [[block]]
+        block = "battery"
+        format = " $icon $percentage "
 
         [[block]]
         block = "time"

@@ -37,7 +37,12 @@ let
 
     # Language support
     nix-mode
+    markdown-mode
+    scala-mode
     treesit-grammars.with-all-grammars
+
+    # Documents
+    pdf-tools
   ]));
 in
 {
@@ -257,7 +262,7 @@ in
           :after evil
           :config
           (setq evil-collection-mode-list
-                '(dashboard dired ibuffer magit term vterm))
+                '(dashboard dired ibuffer magit term vterm pdf))
           (evil-collection-init))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -323,7 +328,10 @@ in
            ([remap yank-pop] . consult-yank-pop))
           :config
           (setq consult-narrow-key "<"
-                consult-line-numbers-widen t))
+                consult-line-numbers-widen t)
+          ;; Always start consult-find from the current file's directory
+          (setq consult-project-root-function
+                (lambda () (locate-dominating-file default-directory ".git"))))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         ;; Which-key
@@ -471,6 +479,29 @@ in
           ("C-<next>"  . centaur-tabs-forward))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        ;; PDF Tools
+        ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        (use-package pdf-tools
+          :ensure nil
+          :demand t
+          :config
+          (pdf-tools-install)
+          (setq pdf-view-use-scaling t
+                pdf-view-use-imagemagick nil)
+          ;; K380 Graphite colours for PDF view
+          (set-face-attribute 'pdf-view-region nil :background "#3D3B30" :foreground "#C8C8C0"))
+
+        ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        ;; Markdown
+        ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        (use-package markdown-mode
+          :ensure nil
+          :mode (("\\.md\\'" . markdown-mode)
+                 ("\\.markdown\\'" . markdown-mode))
+          :config
+          (setq markdown-fontify-code-blocks-natively t))
+
+        ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         ;; Magit
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         (use-package magit
@@ -502,7 +533,7 @@ in
         (use-package eglot
           :ensure nil
           :demand t
-          :hook ((python-mode python-ts-mode rust-ts-mode nix-mode) . eglot-ensure))
+          :hook ((python-mode python-ts-mode rust-ts-mode nix-mode java-mode scala-mode markdown-mode) . eglot-ensure))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         ;; Treesitter
@@ -510,6 +541,7 @@ in
         (setq major-mode-remap-alist
               '((python-mode . python-ts-mode)
                 (rust-mode . rust-ts-mode)
+                (java-mode . java-ts-mode)
                 (js-mode . js-ts-mode)
                 (typescript-mode . typescript-ts-mode)
                 (json-mode . json-ts-mode)))
