@@ -87,6 +87,12 @@ in
         (setq display-line-numbers-type 'relative)
         (setq-default cursor-type 'bar)
 
+        ;; Scrolling
+        (setq scroll-margin 8
+              scroll-conservatively 101
+              scroll-preserve-screen-position t
+              auto-window-vscroll nil)
+
         ;; Transparent background for Ghostty
         (set-frame-parameter (selected-frame) 'alpha-background 100)
         (add-to-list 'default-frame-alist '(alpha-background . 100))
@@ -440,6 +446,20 @@ in
                 centaur-tabs-show-navigation-buttons nil
                 centaur-tabs-cycle-scope 'tabs)
           (centaur-tabs-mode 1)
+
+          ;; K380 Graphite theme colours
+          (set-face-attribute 'centaur-tabs-default nil
+            :background "#28261F" :foreground "#C8C8C0")
+          (set-face-attribute 'centaur-tabs-selected nil
+            :background "#302E26" :foreground "#C8C8C0" :bold t)
+          (set-face-attribute 'centaur-tabs-unselected nil
+            :background "#28261F" :foreground "#888882")
+          (set-face-attribute 'centaur-tabs-selected-modified nil
+            :background "#302E26" :foreground "#E8A020" :bold t)
+          (set-face-attribute 'centaur-tabs-unselected-modified nil
+            :background "#28261F" :foreground "#E8A020")
+          (set-face-attribute 'centaur-active-bar-face nil
+            :background "#F0C040" :height 3)
           :bind
           ("C-<prior>" . centaur-tabs-backward)
           ("C-<next>"  . centaur-tabs-forward))
