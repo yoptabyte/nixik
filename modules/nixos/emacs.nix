@@ -21,7 +21,7 @@ let
     treemacs
     treemacs-evil
     treemacs-magit
-    centaur-tabs
+    # centaur-tabs
 
     # Git
     magit
@@ -163,7 +163,7 @@ in
           ;; File prefix
           (my/leader-keys
             "f" '(:ignore t :which-key "file")
-            "ff" '(consult-find :which-key "find")
+            "ff" '(dired :which-key "dired")
             "fw" '(consult-ripgrep :which-key "grep")
             "fb" '(consult-buffer :which-key "buffer")
             "fo" '(consult-recent-file :which-key "recent")
@@ -438,45 +438,42 @@ in
            '(diff-hl-delete ((t (:background "#5A2E2E" :foreground "#E8A020"))))))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        ;; Centaur Tabs
+        ;; Centaur Tabs (disabled)
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        (use-package centaur-tabs
-          :ensure nil
-          :demand t
-          :config
-          (setq centaur-tabs-style "box"
-                centaur-tabs-set-icons t
-                centaur-tabs-gray-out-icons 'buffer
-                centaur-tabs-set-bar 'under
-                centaur-tabs-set-modified-marker t
-                centaur-tabs-modified-marker "●"
-                centaur-tabs-height 32
-                centaur-tabs-show-navigation-buttons nil
-                centaur-tabs-cycle-scope 'tabs)
-          (centaur-tabs-mode 1)
-
-          ;; Background colour for the entire tab bar (including empty space)
-          (setq centaur-tabs-background-color "#28261F")
-
-          ;; K380 Graphite theme colours
-          ;; Remove white background on empty tab-bar space
-          (set-face-attribute 'header-line nil :background "#28261F")
-
-          (set-face-attribute 'centaur-tabs-default nil
-            :background "#28261F" :foreground "#C8C8C0")
-          (set-face-attribute 'centaur-tabs-selected nil
-            :background "#3D3B30" :foreground "#F0C040" :bold t)
-          (set-face-attribute 'centaur-tabs-unselected nil
-            :background "#28261F" :foreground "#5A5848")
-          (set-face-attribute 'centaur-tabs-selected-modified nil
-            :background "#3D3B30" :foreground "#E8A020" :bold t)
-          (set-face-attribute 'centaur-tabs-unselected-modified nil
-            :background "#28261F" :foreground "#E8A020")
-          (set-face-attribute 'centaur-tabs-active-bar-face nil
-            :background "#F0C040" :height 3)
-          :bind
-          ("C-<prior>" . centaur-tabs-backward)
-          ("C-<next>"  . centaur-tabs-forward))
+        ;; (use-package centaur-tabs
+        ;;   :ensure nil
+        ;;   :demand t
+        ;;   :config
+        ;;   (setq centaur-tabs-style "bar"
+        ;;         centaur-tabs-set-icons t
+        ;;         centaur-tabs-gray-out-icons 'buffer
+        ;;         centaur-tabs-set-bar nil
+        ;;         centaur-tabs-set-modified-marker t
+        ;;         centaur-tabs-modified-marker "●"
+        ;;         centaur-tabs-height 32
+        ;;         centaur-tabs-show-navigation-buttons nil
+        ;;         centaur-tabs-cycle-scope 'tabs
+        ;;         centaur-tabs-background-color "#28261F")
+        ;;   (centaur-tabs-mode 1)
+        ;;
+        ;;   ;; Override faces with custom-set-faces so theme cannot clobber them
+        ;;   (custom-set-faces
+        ;;    '(header-line ((t (:background "#28261F" :foreground "#28261F"
+        ;;                       :underline nil :box nil :overline nil))))
+        ;;    '(centaur-tabs-default ((t (:background "#28261F" :foreground "#C8C8C0"
+        ;;                                :underline nil :box nil :overline nil))))
+        ;;    '(centaur-tabs-selected ((t (:background "#3D3B30" :foreground "#F0C040"
+        ;;                                 :bold t :underline nil :box nil :overline nil))))
+        ;;    '(centaur-tabs-unselected ((t (:background "#28261F" :foreground "#5A5848"
+        ;;                                    :underline nil :box nil :overline nil))))
+        ;;    '(centaur-tabs-selected-modified ((t (:background "#3D3B30" :foreground "#E8A020"
+        ;;                                          :bold t :underline nil :box nil :overline nil))))
+        ;;    '(centaur-tabs-unselected-modified ((t (:background "#28261F" :foreground "#E8A020"
+        ;;                                            :underline nil :box nil :overline nil))))
+        ;;    '(centaur-tabs-active-bar-face ((t (:background "#28261F" :height 1)))))
+        ;;   :bind
+        ;;   ("C-<prior>" . centaur-tabs-backward)
+        ;;   ("C-<next>"  . centaur-tabs-forward))
 
         ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         ;; PDF Tools
@@ -488,6 +485,8 @@ in
           (pdf-tools-install)
           (setq pdf-view-use-scaling t
                 pdf-view-use-imagemagick nil)
+          ;; Disable display-line-numbers-mode in PDF view (incompatible)
+          (add-hook 'pdf-view-mode-hook (lambda () (display-line-numbers-mode -1)))
           ;; K380 Graphite colours for PDF view
           (set-face-attribute 'pdf-view-region nil :background "#3D3B30" :foreground "#C8C8C0"))
 

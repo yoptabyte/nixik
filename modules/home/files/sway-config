@@ -6,7 +6,6 @@ set $menu wmenu-run
 
 # Startup
 exec mako
-exec sleep 2 && vicinae server
 exec eval $(gnome-keyring-daemon --start --components=secrets)
 
 # Gaps

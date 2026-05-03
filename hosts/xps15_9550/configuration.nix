@@ -146,10 +146,16 @@ in
 
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${lib.getExe vicinaePkg} server";
+      ExecStart = "${lib.getExe vicinaePkg} server --replace";
       Restart = "always";
       RestartSec = 5;
       KillMode = "process";
+      PassEnvironment = [
+        "DISPLAY"
+        "WAYLAND_DISPLAY"
+        "XDG_RUNTIME_DIR"
+        "DBUS_SESSION_BUS_ADDRESS"
+      ];
       Environment = [
         "PATH=/home/yoptabyte/.local/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:${lib.makeBinPath [ pkgs.thunar pkgs.pavucontrol ]}"
         "VICINAE_OVERRIDES=/home/yoptabyte/.config/vicinae/nix.json"
@@ -469,7 +475,7 @@ in
       # i3status-rust config
       ".config/i3status-rust/config.toml".text = ''
         [theme]
-        name = "plain"
+        theme = "plain"
         [theme.overrides]
         idle_bg = "#282828"
         idle_fg = "#f0c040"
