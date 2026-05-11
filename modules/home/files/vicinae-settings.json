@@ -9,13 +9,13 @@
   },
   "font": {
     "normal": {
-      "family": "JetBrainsMono Nerd Font",
+      "family": "ZedMono Nerd Font",
       "size": 11.0
     }
   },
   "theme": {
     "dark": {
-      "name": "amber-night",
+      "name": "ghostty-night",
       "icon_theme": "auto"
     },
     "light": {

@@ -33,7 +33,7 @@
       fileencoding = "utf-8";
       pumheight = 10;
       showmode = false;
-      showtabline = 2;
+      showtabline = 0;
       splitbelow = true;
       splitright = true;
       timeoutlen = 300;
@@ -286,7 +286,38 @@
         enable = true;
         settings = {
           options = {
-            theme = "base16";
+            theme = {
+              normal = {
+                a = { bg = "#f0c040"; fg = "#28261f"; gui = "bold"; };
+                b = { bg = "#302e26"; fg = "#c8c8c0"; };
+                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+              };
+              insert = {
+                a = { bg = "#a8d8a0"; fg = "#28261f"; gui = "bold"; };
+                b = { bg = "#302e26"; fg = "#c8c8c0"; };
+                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+              };
+              visual = {
+                a = { bg = "#e8a020"; fg = "#28261f"; gui = "bold"; };
+                b = { bg = "#302e26"; fg = "#c8c8c0"; };
+                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+              };
+              replace = {
+                a = { bg = "#e8a020"; fg = "#28261f"; gui = "bold"; };
+                b = { bg = "#302e26"; fg = "#c8c8c0"; };
+                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+              };
+              command = {
+                a = { bg = "#f0c040"; fg = "#28261f"; gui = "bold"; };
+                b = { bg = "#302e26"; fg = "#c8c8c0"; };
+                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+              };
+              inactive = {
+                a = { bg = "#28261f"; fg = "#888882"; gui = "bold"; };
+                b = { bg = "#28261f"; fg = "#888882"; };
+                c = { bg = "#28261f"; fg = "#888882"; };
+              };
+            };
             component_separators = { left = ""; right = ""; };
             section_separators   = { left = ""; right = ""; };
           };
@@ -302,15 +333,15 @@
       };
 
       bufferline = {
-        enable = true;
-        settings.options = {
-          mode = "buffers";
-          separator_style = "slant";
-          always_show_bufferline = true;
-          show_buffer_close_icons = true;
-          show_close_icon = false;
-          color_icons = true;
-        };
+        enable = false;
+      #   settings.options = {
+      #     mode = "buffers";
+      #     separator_style = "slant";
+      #     always_show_bufferline = true;
+      #     show_buffer_close_icons = true;
+      #     show_close_icon = false;
+      #     color_icons = true;
+      #   };
       };
 
       nvim-autopairs.enable = true;
@@ -343,8 +374,8 @@
             height = 0.9;
             options = {
               signcolumn = "no";
-              number = false;
-              relativenumber = false;
+              number = true;
+              relativenumber = true;
               cursorline = false;
               cursorcolumn = false;
               foldcolumn = "0";
@@ -398,8 +429,8 @@
       vim.cmd("highlight clear")
       vim.cmd("set background=dark")
       local hl = vim.api.nvim_set_hl
-      hl(0, "Normal",        { fg="#c8c8c0", bg="none" })
-      hl(0, "NormalNC",      { fg="#c8c8c0", bg="none" })
+      hl(0, "Normal",        { fg="#c8c8c0", bg="#28261F" })
+      hl(0, "NormalNC",      { fg="#c8c8c0", bg="#28261F" })
       hl(0, "NormalFloat",   { fg="#c8c8c0", bg="#302e26" })
       hl(0, "FloatBorder",   { fg="#3d3b30", bg="none" })
       hl(0, "SignColumn",    { bg="none" })
@@ -444,8 +475,8 @@
 
       vim.api.nvim_create_autocmd("ColorScheme", {
         callback = function()
-          hl(0, "Normal",   { fg="#c8c8c0", bg="none" })
-          hl(0, "NormalNC", { fg="#c8c8c0", bg="none" })
+          hl(0, "Normal",   { fg="#c8c8c0", bg="#28261F" })
+          hl(0, "NormalNC", { fg="#c8c8c0", bg="#28261F" })
         end,
       })
 
@@ -469,9 +500,9 @@
         end,
       })
 
-      -- Transparent background
+      -- Transparent background (keep editor bg solid)
       local function set_transparent_background()
-        for _, group in ipairs({ "Normal","NormalNC","SignColumn","EndOfBuffer","NormalFloat","FloatBorder" }) do
+        for _, group in ipairs({ "SignColumn","EndOfBuffer","NormalFloat","FloatBorder" }) do
           vim.api.nvim_set_hl(0, group, { bg = "none" })
         end
       end
@@ -479,7 +510,7 @@
       vim.api.nvim_create_autocmd("ColorScheme", { callback = set_transparent_background })
 
       -- Per-window zoom
-      local font_name   = "JetBrainsMono Nerd Font"
+      local font_name   = "ZedMono Nerd Font"
       local font_sizes  = { code = 14, neotree = 14 }
       local function set_font(size) vim.o.guifont = font_name .. ":h" .. size end
       local function is_neotree()   return vim.bo.filetype == "neo-tree" end

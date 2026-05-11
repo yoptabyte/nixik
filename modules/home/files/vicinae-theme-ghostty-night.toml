@@ -1,0 +1,23 @@
+[meta]
+version = 1
+name = "Ghostty Night"
+description = "Dark theme matching Ghostty terminal colors"
+variant = "dark"
+inherits = "vicinae-dark"
+
+[colors.core]
+background = "#28261F"
+foreground = "#c8c8c0"
+secondary_background = "#3a3a38"
+border = "#3a3a38"
+accent = "#f0c040"
+
+[colors.accents]
+blue = "#888882"
+green = "#a8d8a0"
+magenta = "#c79ab1"
+orange = "#e8a020"
+purple = "#888882"
+red = "#e8a020"
+yellow = "#f0c040"
+cyan = "#a8d8a0"

@@ -37,9 +37,9 @@ client.placeholder      #ebdbb2 #3c3836 #ebdbb2 #3c3836 #3c3836
 
 # Bar
 bar {
-    position top
+    position bottom
     status_command i3status-rs ~/.config/i3status-rust/config.toml
-    font pango:JetBrains Mono 9
+    font pango:JetBrainsMono Nerd Font 9
     colors {
         background #282828
         statusline #ebdbb2

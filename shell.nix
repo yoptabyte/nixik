@@ -17,4 +17,13 @@ in
       nilla-cli
       nilla-nixos
     ];
+
+    shellHook = ''
+      # Workaround: codeberg.org occasionally returns 502 for xlibre-overlay.
+      # Use the cached nix store path if available.
+      XLIBRE_PATH="/nix/store/963dbws2hx7mcrwi95xf490hky39x9jm-xlibre-overlay.git-bcef0e9"
+      if [ -d "$XLIBRE_PATH" ]; then
+        export NPINS_OVERRIDE_xlibre_overlay="$XLIBRE_PATH"
+      fi
+    '';
   }

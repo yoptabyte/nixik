@@ -14,7 +14,11 @@ in
           src = pins.nixpkgs;
           settings = {
             configuration.allowUnfree = true;
-            overlays = [];
+            overlays = [
+              (final: prev: {
+                antigravity = final.callPackage (pins.antigravity + "/package.nix") { };
+              })
+            ];
           };
         };
         xlibre-overlay = {

@@ -1,6 +1,6 @@
 { config, lib, pkgs, inputs, ... }:
 let
-  vicinaePkg = (import "${inputs.vicinae.src}" { inherit pkgs; }).vicinae;
+  vicinaePkg = pkgs.vicinae;
 in
 
 {
@@ -30,6 +30,10 @@ in
     inputs.xlibre-overlay.result.nixosModules.overlay-all-xlibre-drivers
     inputs.xlibre-overlay.result.nixosModules.nvidia-ignore-ABI
   ];
+
+  # Fonts
+  fonts.fontconfig.enable = true;
+  fonts.packages = with pkgs; [ nerd-fonts.zed-mono nerd-fonts.symbols-only ];
 
   # Hostname
   networking.hostName = "xps15";
@@ -106,10 +110,20 @@ in
 
   services.power-profiles-daemon.enable = true;
 
-  # Jujutsu (jj) for version control — git is already enabled via programs.git
-  environment.systemPackages = with pkgs; [
-    jujutsu
-  ];
+  # Docker
+  virtualisation.docker = {
+    enable = true;
+    enableOnBoot = true;
+    daemon.settings = {
+      log-driver = "json-file";
+      log-opts = {
+        max-size = "10m";
+        max-file = "3";
+      };
+    };
+  };
+  users.groups.docker = {};
+
 
   # Git configuration via NixOS module
   programs.git = {
@@ -117,15 +131,12 @@ in
     lfs.enable = true;
   };
 
-  # Zsh shell setup
-  programs.zsh.enable = true;
-
   # User
   users.users.yoptabyte = {
     isNormalUser = true;
     description = "yoptabyte";
-    extraGroups = [ "networkmanager" "wheel" "audio" "video" ];
-    shell = pkgs.zsh;
+    extraGroups = [ "networkmanager" "wheel" "audio" "video" "docker" ];
+    shell = pkgs.nushell;
   };
 
   nixpkgs.overlays = [
@@ -207,16 +218,16 @@ in
 
       # Ghostty config
       ".config/ghostty/config".text = ''
-        font-family = JetBrainsMono Nerd Font
+        font-family = ZedMono Nerd Font
         font-size = 11
-        background = 1c1c1c
+        background = 28261F
         foreground = c8c8c0
         background-opacity = 1.0
         background-blur = true
         cursor-style = block
         cursor-style-blink = true
         cursor-color = f0c040
-        cursor-text = 1c1c1c
+        cursor-text = 28261F
         selection-background = 3a3a38
         selection-foreground = c8c8c0
         window-padding-x = 10
@@ -246,6 +257,7 @@ in
 
       # Tmux config
       ".config/tmux/tmux.conf".text = ''
+        set -g status-position bottom
         set -g status-bg '#302e26'
         set -g status-fg '#888882'
         set -g status-left "#[fg=#f0c040]░▒▓#[fg=#1c1c1c,bg=#f0c040] #S #[fg=#f0c040,bg=#302e26]▓▒░"
@@ -300,6 +312,7 @@ in
         bind-key -n M-7 select-window -t 7
         bind-key -n M-8 select-window -t 8
         bind-key -n M-9 select-window -t 9
+        bind-key -n M-0 select-window -t 10
 
         bind-key -n M-Left select-pane -L
         bind-key -n M-Down select-pane -D
@@ -337,59 +350,15 @@ in
         bind -r x run-shell 'SESSION="codex-$(echo #{pane_current_path} | md5sum | cut -c1-8)"; tmux has-session -t "$SESSION" 2>/dev/null || tmux new-session -d -s "$SESSION" -c "#{pane_current_path}" "codex"; tmux display-popup -w80% -h80% -E "tmux attach-session -t $SESSION"'
       '';
 
-      # Zsh config
-      ".config/zsh/.zshrc".text = ''
-        # Enable powerlevel10k instant prompt
-        if [[ -r ''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh ]]; then
-          source ''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh
-        fi
-
-        # Enable completion system
-        autoload -U compinit && compinit
-        zmodload zsh/complist
-
-        # Case-insensitive completion
-        zstyle ':completion:*' matcher-list 'r:|=* l:|=*'
-
-        bindkey "^U" kill-whole-line
-        bindkey "^R" history-search-current-dir
-
-        # zoxide (smarter cd)
-        eval "$(zoxide init zsh)"
-
-        source ${pkgs.zsh-powerlevel10k}/share/zsh-powerlevel10k/powerlevel10k.zsh-theme
-        [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
-
-        # fzf key bindings
-        [ -f ${pkgs.fzf}/share/fzf/key-bindings.zsh ] && source ${pkgs.fzf}/share/fzf/key-bindings.zsh
-        [ -f ${pkgs.fzf}/share/fzf/completion.zsh ]   && source ${pkgs.fzf}/share/fzf/completion.zsh
-
-        # aliases
-        alias ls="eza --icons"
-        alias ll="eza -la --icons"
-        alias lt="eza --tree --icons"
-        alias cat="bat"
-        alias lg="lazygit"
-        alias ld="lazydocker"
-        alias v="nvim"
-
-        tn() {
-          if [[ -z "$1" ]]; then
-            echo "usage: tn <session-name>" >&2
-            return 1
-          fi
-          tmux new-session -A -s "$1"
-        }
-      '';
-
-      # Powerlevel10k config
-      ".p10k.zsh".source = ../../modules/home/files/p10k.zsh;
-
       # Nushell config
       ".config/nushell/config.nu".text = ''
         $env.config.show_banner = false
         $env.config.table.mode = "rounded"
-        $env.config.history.format = "sqlite"
+        $env.config.history.file_format = "sqlite"
+        $env.STARSHIP_CONFIG = ($env.HOME | path join ".config" "starship.toml")
+mkdir ~/.cache/starship
+starship init nu | save -f ~/.cache/starship/init.nu
+source ~/.cache/starship/init.nu
 
         alias em = emacsclient -c -n
         alias em-kill = emacsclient -e '(kill-emacs)'
@@ -420,56 +389,63 @@ in
             git commit -m $msg
         }
 
-        # Prompt
-        let dir = ($env.PWD | path basename)
-        let branch = (
-            do -i { git branch --show-current }
-            | complete | get stdout | str trim
-        )
-        if ($branch | is-empty) {
-            $"(ansi green)($dir)(ansi reset) ❯ "
-        } else {
-            $"(ansi green)($dir)(ansi reset) (ansi yellow)[($branch)](ansi reset) ❯ "
-        }
+        $env.STARSHIP_CONFIG = ($env.HOME | path join ".config" "starship.toml")
+        $env.PROMPT_COMMAND = {|| starship prompt }
       '';
+
+      # Starship config
+      ".config/starship.toml".source = ../../modules/home/files/starship.toml;
 
       # Yazi config
       ".config/yazi/yazi.toml".text = ''
-        [open]
-        rules = [
-          { name = "*.nix"; use = "edit" },
-          { name = "*.rs";  use = "edit" },
-          { name = "*.py";  use = "edit" },
-          { name = "*.ts";  use = "edit" },
-          { name = "*.tsx"; use = "edit" },
-          { name = "*.js";  use = "edit" },
-          { name = "*.jsx"; use = "edit" },
-          { name = "*.lua"; use = "edit" },
-          { name = "*.md";  use = "edit" },
-          { name = "*.txt"; use = "edit" },
-          { mime = "application/pdf"; use = "doc" },
-          { name = "*.epub"; use = "doc" },
-          { name = "*.djvu"; use = "doc" },
-          { mime = "image/*"; use = "img" },
+        [opener]
+        edit = [
+          { run = "nvim %s", block = true, desc = "Edit in Neovim" },
+        ]
+        doc = [
+          { run = "zathura %s", orphan = true, desc = "View document" },
+        ]
+        img = [
+          { run = "nsxiv %s", orphan = true, desc = "View images" },
+        ]
+        extract = [
+          { run = "unar %s", block = true, desc = "Extract archive" },
         ]
 
-        [[opener]]
-        name = "doc"
-        run = "zathura \"$@\""
-        orphan = true
-        desc = "View document"
+        [open]
+        rules = [
+          { url = "*.nix", use = "edit" },
+          { url = "*.rs",  use = "edit" },
+          { url = "*.py",  use = "edit" },
+          { url = "*.ts",  use = "edit" },
+          { url = "*.tsx", use = "edit" },
+          { url = "*.js",  use = "edit" },
+          { url = "*.jsx", use = "edit" },
+          { url = "*.lua", use = "edit" },
+          { url = "*.md",  use = "edit" },
+          { url = "*.txt", use = "edit" },
+          { mime = "application/pdf", use = "doc" },
+          { url = "*.epub", use = "doc" },
+          { url = "*.djvu", use = "doc" },
+          { mime = "image/*", use = "img" },
+          { mime = "application/*zip", use = "extract" },
+          { mime = "application/x-7z-compressed", use = "extract" },
+          { mime = "application/x-rar", use = "extract" },
+          { mime = "application/x-tar", use = "extract" },
+          { mime = "application/gzip", use = "extract" },
+          { mime = "application/x-bzip2", use = "extract" },
+          { mime = "application/x-xz", use = "extract" },
+        ]
+      '';
 
-        [[opener]]
-        name = "img"
-        run = "nsxiv \"$@\""
-        orphan = true
-        desc = "View images"
-
-        [[opener]]
-        name = "edit"
-        run = "nvim \"$@\""
-        block = true
-        desc = "Edit in Neovim"
+      ".config/yazi/keymap.toml".text = ''
+        [mgr]
+        prepend_keymap = [
+          { on = [ "c", "z" ], run = "shell 'zip -r archive.zip %s' --interactive --confirm", desc = "Create zip archive" },
+          { on = [ "c", "7" ], run = "shell '7z a archive.7z %s' --interactive --confirm", desc = "Create 7z archive" },
+          { on = [ "x", "z" ], run = "shell 'ripunzip unzip-file %s' --confirm", desc = "Extract zip with ripunzip" },
+          { on = [ "x", "a" ], run = "shell 'unar %s' --confirm", desc = "Extract archive with unar" },
+        ]
       '';
 
       # i3status-rust config
@@ -490,6 +466,9 @@ in
         separator_bg = "#282828"
         separator_fg = "#f0c040"
 
+        [icons]
+        icons = "material-nf"
+
         [[block]]
         block = "cpu"
         interval = 1
@@ -509,6 +488,12 @@ in
 
         [[block]]
         block = "sound"
+        [[block.click]]
+        button = "left"
+        cmd = "pavucontrol"
+
+        [[block]]
+        block = "backlight"
 
         [[block]]
         block = "battery"
@@ -518,6 +503,20 @@ in
         block = "time"
         interval = 60
         format = " $timestamp.datetime(f:'%a %d/%m %R') "
+
+        [[block]]
+        block = "keyboard_layout"
+        driver = "sway"
+        format = " $layout "
+        [block.mappings]
+        "English (N/A)" = "US"
+        "Russian (N/A)" = "RU"
+        "English (US)" = "US"
+        "Russian (RU)" = "RU"
+
+        [[block]]
+        block = "net"
+        format = " $icon ^icon_net_down $speed_down.eng(prefix:K) ^icon_net_up $speed_up.eng(prefix:K) "
       '';
 
       # Sway config
@@ -575,13 +574,10 @@ in
       # Vicinae themes
       ".config/vicinae/themes/amber-night.toml".source = ../../modules/home/files/vicinae-theme-amber-night.toml;
       ".config/vicinae/themes/amber-day.toml".source = ../../modules/home/files/vicinae-theme-amber-day.toml;
+      ".config/vicinae/themes/ghostty-night.toml".source = ../../modules/home/files/vicinae-theme-ghostty-night.toml;
     };
 
     packages = with pkgs; [
-      # Nerd Fonts
-      nerd-fonts.jetbrains-mono
-      nerd-fonts.symbols-only
-
       # Git tools
       lazygit
       lazydocker
@@ -611,20 +607,27 @@ in
       onefetch
       xcape
 
-      # Editors
-      neovim
+      # Archive tools
+      zip
+      p7zip
+      ripunzip
+      unar
 
       # Terminal
       ghostty
 
       # Additional tools
+      antigravity
       nushell
+      starship
       tmux
       delta
-      zsh-powerlevel10k
 
       # Launcher
       vicinaePkg
+
+      # Vicinae extensions dependencies
+      pkgs.pulseaudio
     ];
   };
 };

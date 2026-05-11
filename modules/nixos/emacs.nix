@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  myEmacs = (pkgs.emacs.pkgs.withPackages (epkgs: with epkgs; [
+  myEmacs = (pkgs.emacs30-pgtk.pkgs.withPackages (epkgs: with epkgs; [
     # Core / UI
     vertico
     orderless
@@ -87,7 +87,7 @@ in
               visible-bell t
               ring-bell-function 'ignore)
 
-        (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font" :height 140)
+        (set-face-attribute 'default nil :font "ZedMono Nerd Font" :height 140)
         (global-display-line-numbers-mode t)
         (setq display-line-numbers-type 'relative)
         (setq-default cursor-type 'bar)
