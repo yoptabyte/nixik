@@ -26,4 +26,6 @@ if [ "$missing" -eq 1 ]; then
   done
 fi
 
+# XWayland mode — native Wayland causes black screen on screen share
+export ELECTRON_OZONE_PLATFORM_HINT=x11
 exec "$VESKTOP_BIN" "$@"

@@ -28,7 +28,6 @@ in
     # XLibre overlay modules
     inputs.xlibre-overlay.result.nixosModules.overlay-xlibre-xserver
     inputs.xlibre-overlay.result.nixosModules.overlay-all-xlibre-drivers
-    inputs.xlibre-overlay.result.nixosModules.nvidia-ignore-ABI
   ];
 
   # Fonts
@@ -36,7 +35,7 @@ in
   fonts.packages = with pkgs; [ nerd-fonts.zed-mono nerd-fonts.symbols-only ];
 
   # Hostname
-  networking.hostName = "xps15";
+  networking.hostName = "thinkpad-x390";
 
   # Timezone
   time.timeZone = "Europe/Lisbon";
@@ -62,6 +61,10 @@ in
   # Latest kernel
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  # ZFS
+  boot.supportedFilesystems = [ "zfs" ];
+  networking.hostId = "CHANGE_ME";
+
   # NetworkManager
   networking.networkmanager = {
     enable = true;
@@ -83,13 +86,6 @@ in
   # Keyboard layout - US + RU with Caps Lock switching
   services.xserver.xkb.layout = "us,ru";
   services.xserver.xkb.options = "grp:caps_toggle";
-
-  # NVIDIA PRIME offloading
-  hardware.nvidia.prime = {
-    offload.enable = true;
-    nvidiaBusId = "PCI:2:0:0";
-    intelBusId = "PCI:1:0:0";
-  };
 
   # Bluetooth
   hardware.bluetooth.enable = true;

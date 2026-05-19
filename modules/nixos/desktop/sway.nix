@@ -36,7 +36,9 @@
     enable = true;
     extraPortals = [
       pkgs.xdg-desktop-portal-wlr
+      pkgs.xdg-desktop-portal-gtk
     ];
+    xdgOpenUsePortal = true;
     config.sway = {
       default = lib.mkDefault [ "wlr" ];
       "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];

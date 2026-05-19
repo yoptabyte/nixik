@@ -6,6 +6,7 @@ in
   {
     includes = [
       "${pins.nilla-nixos}/modules/nixos.nix"
+      ./modules/darwin/darwin.nix
       ./shells
     ];
     config = {
@@ -38,6 +39,23 @@ in
         args = { inherit (config) inputs; };
         modules = [
           ./hosts/xps15_9550/configuration.nix
+        ];
+      };
+
+      systems.nixos.thinkpad-x390 = {
+        pkgs = config.inputs.nixpkgs.result.x86_64-linux;
+        args = { inherit (config) inputs; };
+        modules = [
+          ./hosts/thinkpad_x390/configuration.nix
+        ];
+      };
+
+      systems.darwin.macbook = {
+        system = "aarch64-darwin";
+        pkgs = config.inputs.nixpkgs.result.aarch64-darwin;
+        args = { inherit (config) inputs; };
+        modules = [
+          ./hosts/macbook/configuration.nix
         ];
       };
     };
