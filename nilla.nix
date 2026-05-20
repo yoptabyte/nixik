@@ -16,7 +16,7 @@ in
           settings = {
             configuration.allowUnfree = true;
             overlays = [
-              (final: prev: if final.stdenv.hostPlatform.isLinux then {
+              (final: prev: if prev.stdenv.hostPlatform.isLinux then {
                 antigravity = final.callPackage (pins.antigravity + "/package.nix") { };
               } else { })
             ];
