@@ -7,7 +7,7 @@ in
     darwin = lib.options.create {
       description = "nix-darwin systems to create.";
       default.value = { };
-      type = lib.types.attrs.of (lib.types.submodule (cfg: {
+      type = lib.types.attrs.of (lib.types.submodule (args: let cfg = args.config; in {
         options = {
           args = lib.options.create {
             description = "Additional arguments to pass to darwin modules.";
@@ -32,18 +32,18 @@ in
           result = lib.options.create {
             description = "The created nix-darwin system.";
             type = lib.types.raw;
-            writable = false;
-            default.value =
-              let
-                systemPkgs = inputs.nixpkgs.result.${cfg.system};
-                darwinConfig = import (inputs.nix-darwin.src + "/eval-config.nix") {
-                  lib = systemPkgs.lib;
-                  modules = cfg.modules;
-                  specialArgs = { inherit (config) inputs; } // cfg.args;
-                };
-              in
-              darwinConfig;
           };
+        };
+        config = {
+          result =
+            let
+              systemPkgs = inputs.nixpkgs.result.${cfg.system};
+            in
+            import (inputs.nix-darwin.src + "/eval-config.nix") {
+              lib = systemPkgs.lib;
+              modules = cfg.modules;
+              specialArgs = { inherit inputs; } // cfg.args;
+            };
         };
       }));
     };
