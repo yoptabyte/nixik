@@ -2,12 +2,15 @@
 # Usage: nix-shell
 let
   pins = import ./npins;
+  system = builtins.currentSystem;
   pkgs = import pins.nixpkgs {
-    system = builtins.currentSystem;
+    inherit system;
     config.allowUnfree = true;
   };
-  nilla-cli = (import pins.nilla-cli).packages.nilla-cli.result.${builtins.currentSystem};
-  nilla-nixos = (import pins.nilla-nixos).packages.nilla-nixos.result.${builtins.currentSystem};
+  nilla-cli = (import pins.nilla-cli).packages.nilla-cli.result.${system};
+  nilla-nixos = let
+    result = (import pins.nilla-nixos).packages.nilla-nixos.result;
+  in if builtins.hasAttr system result then result.${system} else null;
 in
   pkgs.mkShell {
     packages = with pkgs; [
@@ -15,8 +18,7 @@ in
       nix
       git
       nilla-cli
-      nilla-nixos
-    ];
+    ] ++ lib.optional (nilla-nixos != null) nilla-nixos;
 
     shellHook = ''
       # Workaround: codeberg.org occasionally returns 502 for xlibre-overlay.
