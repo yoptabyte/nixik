@@ -7,7 +7,7 @@ in
     darwin = lib.options.create {
       description = "nix-darwin systems to create.";
       default.value = { };
-      type = lib.types.attrs.of (lib.types.submodule ({ config: cfg, ... }: {
+      type = lib.types.attrs.of (lib.types.submodule (cfg: {
         options = {
           args = lib.options.create {
             description = "Additional arguments to pass to darwin modules.";

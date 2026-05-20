@@ -6,7 +6,7 @@ in
   {
     includes = [
       "${pins.nilla-nixos}/modules/nixos.nix"
-      #./modules/darwin/darwin.nix
+      ./modules/darwin/darwin.nix
       ./shells
     ];
     config = {
@@ -50,13 +50,13 @@ in
         ];
       };
 
-      # systems.darwin.macbook = {
-      #   system = "aarch64-darwin";
-      #   pkgs = config.inputs.nixpkgs.result.aarch64-darwin;
-      #   args = { inherit (config) inputs; };
-      #   modules = [
-      #     ./hosts/macbook/configuration.nix
-      #   ];
-      # };
+      systems.darwin.macbook = {
+        system = "aarch64-darwin";
+        pkgs = config.inputs.nixpkgs.result.aarch64-darwin;
+        args = { inherit (config) inputs; };
+        modules = [
+          ./hosts/macbook/configuration.nix
+        ];
+      };
     };
   })

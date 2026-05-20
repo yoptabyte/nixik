@@ -21,12 +21,12 @@ in
     # Nixvim
     inputs.nixvim.result.nixosModules.nixvim
     ../../modules/home/nixvim.nix
+
+    # Hjem nix-darwin module
+    (import "${inputs.hjem.src}/modules/nix-darwin").default
   ];
 
   nixpkgs.config.allowUnfree = true;
-
-  # System packages
-  environment.systemPackages = sharedPackages ++ [ myEmacs ];
 
   # Fonts
   fonts.fontDir.enable = true;
@@ -75,6 +75,8 @@ in
     shell = pkgs.nushell;
   };
 
+  system.primaryUser = "yoptabyte";
+
   # Git
   programs.git = {
     enable = true;
@@ -104,63 +106,128 @@ in
     serviceConfig.RunAtLoad = true;
   };
 
-  # Ghostty config
-  environment.etc."ghostty/config".text = ''
-    font-family = ZedMono Nerd Font
-    font-size = 11
-    background = 28261F
-    foreground = c8c8c0
-    background-opacity = 1.0
-    cursor-style = block
-    cursor-style-blink = true
-    cursor-color = f0c040
-    cursor-text = 28261F
-    selection-background = 3a3a38
-    selection-foreground = c8c8c0
-    window-padding-x = 10
-    window-padding-y = 10
-    window-decoration = false
-    clipboard-read = allow
-    clipboard-write = allow
-    mouse-scroll-multiplier = 1
-    scrollback-limit = 0
-    palette = 0=#28261F
-    palette = 1=#a8d8a0
-    palette = 2=#e8a020
-    palette = 3=#f0c040
-    palette = 4=#888882
-    palette = 5=#a8d8a0
-    palette = 6=#e8a020
-    palette = 7=#c8c8c0
-    palette = 8=#3a3a38
-    palette = 9=#a8d8a0
-    palette = 10=#e8a020
-    palette = 11=#f0c040
-    palette = 12=#888882
-    palette = 13=#a8d8a0
-    palette = 14=#e8a020
-    palette = 15=#c8c8c0
-  '';
+  # AeroSpace launchd service (tiling WM for macOS)
+  launchd.user.agents.aerospace = {
+    command = "${pkgs.aerospace}/Applications/AeroSpace.app/Contents/MacOS/AeroSpace";
+    serviceConfig.KeepAlive = true;
+    serviceConfig.RunAtLoad = true;
+  };
 
-  # Emacs init.el
-  environment.etc."emacs.d/init.el".source = ../../modules/shared/emacs-init.el;
+  # Hjem home configuration
+  hjem = {
+    clobberByDefault = true;
+    extraModules = [
+      inputs.hjem-rum.result.hjemModules.default
+    ];
+    users.yoptabyte = {
+      enable = true;
+      files = {
+        # AeroSpace config
+        ".config/aerospace/aerospace.toml".text = ''
+          [general]
+          after-login-command = []
+          auto-command-on-workspace-creation = []
+          default-root-container-layout = "tiles"
+          enable-normalization-flatten-containers = true
+          enable-normalization-opposite-orientation-for-nested-containers = true
 
-  # Emacs theme
-  environment.etc."emacs.d/themes/k380-graphite-theme.el".source = ../../modules/home/files/k380-graphite-theme.el;
+          [gaps]
+          inner.horizontal = 8
+          inner.vertical = 8
+          outer.left = 8
+          outer.bottom = 8
+          outer.top = 8
+          outer.right = 8
 
-  # Create symlinks from /etc to user home directory
-  system.activationScripts.postActivation.text = ''
-    USER_HOME=/Users/yoptabyte
+          [focus]
+          focus-follows-mouse = "disabled"
 
-    mkdir -p "$USER_HOME/.config/ghostty"
-    mkdir -p "$USER_HOME/.emacs.d/themes"
+          [mouse-binding]
+          left = "move"
 
-    ln -sfn /etc/ghostty/config "$USER_HOME/.config/ghostty/config"
-    ln -sfn /etc/emacs.d/init.el "$USER_HOME/.emacs.d/init.el"
-    ln -sfn /etc/emacs.d/themes/k380-graphite-theme.el "$USER_HOME/.emacs.d/themes/k380-graphite-theme.el"
+          # Alt as modifier (like i3)
+          [mode.main.binding]
+          alt-h = "focus --left"
+          alt-j = "focus --down"
+          alt-k = "focus --up"
+          alt-l = "focus --right"
+          alt-shift-h = "move --left"
+          alt-shift-j = "move --down"
+          alt-shift-k = "move --up"
+          alt-shift-l = "move --right"
+          alt-1 = "workspace 1"
+          alt-2 = "workspace 2"
+          alt-3 = "workspace 3"
+          alt-4 = "workspace 4"
+          alt-5 = "workspace 5"
+          alt-6 = "workspace 6"
+          alt-7 = "workspace 7"
+          alt-8 = "workspace 8"
+          alt-9 = "workspace 9"
+          alt-shift-1 = "move-to-workspace 1"
+          alt-shift-2 = "move-to-workspace 2"
+          alt-shift-3 = "move-to-workspace 3"
+          alt-shift-4 = "move-to-workspace 4"
+          alt-shift-5 = "move-to-workspace 5"
+          alt-shift-6 = "move-to-workspace 6"
+          alt-shift-7 = "move-to-workspace 7"
+          alt-shift-8 = "move-to-workspace 8"
+          alt-shift-9 = "move-to-workspace 9"
+          alt-tab = "workspace-back-and-forth"
+          alt-shift-tab = "move-workspace-to-monitor --wrap-around-next"
+          alt-slash = "fullscreen"
+          alt-space = "layout floating tiling"
+          alt-r = "reload-config"
+        '';
 
-    chown -R yoptabyte:staff "$USER_HOME/.config/ghostty" "$USER_HOME/.emacs.d" 2>/dev/null || true
-  '';
+        # Ghostty config
+        ".config/ghostty/config".text = ''
+          font-family = ZedMono Nerd Font
+          font-size = 11
+          background = 28261F
+          foreground = c8c8c0
+          background-opacity = 1.0
+          cursor-style = block
+          cursor-style-blink = true
+          cursor-color = f0c040
+          cursor-text = 28261F
+          selection-background = 3a3a38
+          selection-foreground = c8c8c0
+          window-padding-x = 10
+          window-padding-y = 10
+          window-decoration = false
+          clipboard-read = allow
+          clipboard-write = allow
+          mouse-scroll-multiplier = 1
+          scrollback-limit = 0
+          palette = 0=#28261F
+          palette = 1=#a8d8a0
+          palette = 2=#e8a020
+          palette = 3=#f0c040
+          palette = 4=#888882
+          palette = 5=#a8d8a0
+          palette = 6=#e8a020
+          palette = 7=#c8c8c0
+          palette = 8=#3a3a38
+          palette = 9=#a8d8a0
+          palette = 10=#e8a020
+          palette = 11=#f0c040
+          palette = 12=#888882
+          palette = 13=#a8d8a0
+          palette = 14=#e8a020
+          palette = 15=#c8c8c0
+        '';
+
+        # Emacs init.el
+        ".emacs.d/init.el".source = ../../modules/shared/emacs-init.el;
+
+        # Emacs theme
+        ".emacs.d/themes/k380-graphite-theme.el".source = ../../modules/home/files/k380-graphite-theme.el;
+      };
+
+      packages = (import ../../modules/shared/home-packages.nix { inherit pkgs; }) ++ [ myEmacs pkgs.aerospace ];
+    };
+  };
 
   # State version
   system.stateVersion = 5;

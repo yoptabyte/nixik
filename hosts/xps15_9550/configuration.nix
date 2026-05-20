@@ -355,10 +355,6 @@ in
         $env.config.show_banner = false
         $env.config.table.mode = "rounded"
         $env.config.history.file_format = "sqlite"
-        $env.STARSHIP_CONFIG = ($env.HOME | path join ".config" "starship.toml")
-mkdir ~/.cache/starship
-starship init nu | save -f ~/.cache/starship/init.nu
-source ~/.cache/starship/init.nu
 
         alias em = emacsclient -c -n
         alias em-kill = emacsclient -e '(kill-emacs)'

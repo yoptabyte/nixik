@@ -4,6 +4,7 @@ with pkgs; [
   # Git tools
   lazygit
   lazydocker
+  jujutsu
 
   # Useful CLI tools
   ripgrep

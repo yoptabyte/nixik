@@ -22,9 +22,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "8150b5b772343887c76d1a50e79cd844d9d4d5c0",
-      "url": "https://github.com/ghostty-org/ghostty/archive/8150b5b772343887c76d1a50e79cd844d9d4d5c0.tar.gz",
-      "hash": "sha256-2GIPdWu9lIh6OewI+W0oOYRrxYxoE219CHQSAV0Xtuo="
+      "revision": "86444156b403e7dd79ea7f0b2854be76927875b1",
+      "url": "https://github.com/ghostty-org/ghostty/archive/86444156b403e7dd79ea7f0b2854be76927875b1.tar.gz",
+      "hash": "sha256-3Lq9Btf9pikQtH/ukfFiS6M06WSt5CDBQq0b2W75P7E="
     },
     "helium": {
       "type": "Git",
@@ -61,9 +61,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "4a2fd57f9e5d22cd3ef4c4230d245da159ab8dce",
-      "url": "https://github.com/feel-co/hjem/archive/4a2fd57f9e5d22cd3ef4c4230d245da159ab8dce.tar.gz",
-      "hash": "sha256-DHV1vpUers1TbZxIuEGz4VENShZ/EXefiTXd79QIhs4="
+      "revision": "37efab66e4fe6589391e68aee5e1d38f2dbb6afd",
+      "url": "https://github.com/feel-co/hjem/archive/37efab66e4fe6589391e68aee5e1d38f2dbb6afd.tar.gz",
+      "hash": "sha256-jRjJ25zogNMYQcmHMPzEtNtfvQt4yT1MMNXYviWYZYI="
     },
     "hjem-rum": {
       "type": "Git",
@@ -87,9 +87,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "c536d6d006df9eb908efe6fbf40b197047198ee1",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/c536d6d006df9eb908efe6fbf40b197047198ee1.tar.gz",
-      "hash": "sha256-htqKzoJmXf8tVmd8fX7DJB4zxWGMc+AW2st0DF33ZdA="
+      "revision": "3c69691d60d50f87cc0d5f6222992b63c90b010d",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/3c69691d60d50f87cc0d5f6222992b63c90b010d.tar.gz",
+      "hash": "sha256-pXnXgFvoFQKt4gDnOx0OjKSsv0T51QmN5thbzWf9WX0="
     },
     "nilla": {
       "type": "GitRelease",
@@ -171,9 +171,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "13ba3f7ca9da3d49e959745f6d0d1e7a662c1984",
-      "url": "https://github.com/nix-community/nixvim/archive/13ba3f7ca9da3d49e959745f6d0d1e7a662c1984.tar.gz",
-      "hash": "sha256-8x/CeqkYNAAOY+Pa5Huyh0aiUmFcOUAyq3VdYxHb5K4="
+      "revision": "42dbd9f0ea9903ad415d196ba33c8cb44e85bb7a",
+      "url": "https://github.com/nix-community/nixvim/archive/42dbd9f0ea9903ad415d196ba33c8cb44e85bb7a.tar.gz",
+      "hash": "sha256-wDAVC0UhNlKjuPcN9vKFvdARIc4ELned0K7okpGNhfY="
     },
     "vicinae": {
       "type": "Git",
@@ -184,9 +184,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "d39897c129ac7a461a5b39c353e32fb8dbe91b82",
-      "url": "https://github.com/vicinaehq/vicinae/archive/d39897c129ac7a461a5b39c353e32fb8dbe91b82.tar.gz",
-      "hash": "sha256-tsIImqrB9YL8Uz04Ev6TV4izIwSNuOuDQ9pd9IgNiGY="
+      "revision": "9c590570d89c8d977b9b06da89b2d99ff6c7a7b7",
+      "url": "https://github.com/vicinaehq/vicinae/archive/9c590570d89c8d977b9b06da89b2d99ff6c7a7b7.tar.gz",
+      "hash": "sha256-pGy8fNrKWznl5gUlY5TsVaUfSunrb2SiEWIfXeQ96vg="
     },
     "xlibre-overlay": {
       "type": "Git",
@@ -209,9 +209,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "d21282d88c6bd4b3dc692566c5d84de39f7a96c0",
-      "url": "https://github.com/0xc000022070/zen-browser-flake/archive/d21282d88c6bd4b3dc692566c5d84de39f7a96c0.tar.gz",
-      "hash": "sha256-wzHbwUimm45J5r+d4VOi2rrRWwvYimP6OM8BJBIHbYc="
+      "revision": "6891eb4b5fbac054b9406da94525daeec71646e3",
+      "url": "https://github.com/0xc000022070/zen-browser-flake/archive/6891eb4b5fbac054b9406da94525daeec71646e3.tar.gz",
+      "hash": "sha256-JkwxVCt7EHCrisHkzhMPKhfdaNAhpyyKuIdLoNYGuPI="
     }
   },
   "version": 7
