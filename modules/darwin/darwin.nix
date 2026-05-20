@@ -35,12 +35,10 @@ in
             writable = false;
             default.value =
               let
-                nixpkgsLib = if cfg.pkgs != null then cfg.pkgs.lib else inputs.nixpkgs.result.${cfg.system}.lib;
+                systemPkgs = inputs.nixpkgs.result.${cfg.system};
                 darwinConfig = import (inputs.nix-darwin.src + "/eval-config.nix") {
-                  lib = nixpkgsLib;
-                  modules =
-                    (lib.optional (cfg.pkgs != null) { nixpkgs.pkgs = cfg.pkgs; })
-                    ++ cfg.modules;
+                  lib = systemPkgs.lib;
+                  modules = cfg.modules;
                   specialArgs = { inherit (config) inputs; } // cfg.args;
                 };
               in
