@@ -13,8 +13,6 @@ in
     ../../modules/nixos/terminal.nix
     ../../modules/nixos/productivity.nix
     ../../modules/nixos/emacs.nix
-    ../../modules/nixos/creative.nix
-    ../../modules/nixos/gaming.nix
     ../../modules/nixos/social.nix
     ../../modules/nixos/desktop/sway.nix
 
@@ -60,10 +58,6 @@ in
 
   # Latest kernel
   boot.kernelPackages = pkgs.linuxPackages_latest;
-
-  # ZFS
-  boot.supportedFilesystems = [ "zfs" ];
-  networking.hostId = "CHANGE_ME";
 
   # NetworkManager
   networking.networkmanager = {
