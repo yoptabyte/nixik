@@ -35,15 +35,16 @@ in
             writable = false;
             default.value =
               let
-                darwin = import inputs.nix-darwin.src { };
+                nixpkgsLib = if cfg.pkgs != null then cfg.pkgs.lib else inputs.nixpkgs.result.${cfg.system}.lib;
+                darwinConfig = import (inputs.nix-darwin.src + "/eval-config.nix") {
+                  lib = nixpkgsLib;
+                  modules =
+                    (lib.optional (cfg.pkgs != null) { nixpkgs.pkgs = cfg.pkgs; })
+                    ++ cfg.modules;
+                  specialArgs = { inherit (config) inputs; } // cfg.args;
+                };
               in
-              darwin.lib.darwinSystem {
-                system = cfg.system;
-                modules =
-                  (lib.optional (cfg.pkgs != null) { nixpkgs.pkgs = cfg.pkgs; })
-                  ++ cfg.modules;
-                specialArgs = { inherit (config) inputs; } // cfg.args;
-              };
+              darwinConfig;
           };
         };
       }));
