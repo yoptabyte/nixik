@@ -77,7 +77,7 @@ in
   # Homebrew
   homebrew.enable = true;
   homebrew.brews = [ ];
-  homebrew.casks = [ "firefox" "ghostty" ];
+  homebrew.casks = [ "ghostty" ];
   homebrew.onActivation.cleanup = "uninstall";
   homebrew.onActivation.autoUpdate = false;
 
@@ -104,11 +104,11 @@ in
     users.yoptabyte = {
       enable = true;
       files = {
-        # AeroSpace config
+        # AeroSpace config (version 0.20+)
         ".config/aerospace/aerospace.toml".text = ''
-          [general]
-          after-login-command = []
-          auto-command-on-workspace-creation = []
+          config-version = 2
+
+          after-startup-command = []
           default-root-container-layout = "tiles"
           enable-normalization-flatten-containers = true
           enable-normalization-opposite-orientation-for-nested-containers = true
@@ -121,22 +121,15 @@ in
           outer.top = 8
           outer.right = 8
 
-          [focus]
-          focus-follows-mouse = "disabled"
-
-          [mouse-binding]
-          left = "move"
-
-          # Alt as modifier (like i3)
           [mode.main.binding]
-          alt-h = "focus --left"
-          alt-j = "focus --down"
-          alt-k = "focus --up"
-          alt-l = "focus --right"
-          alt-shift-h = "move --left"
-          alt-shift-j = "move --down"
-          alt-shift-k = "move --up"
-          alt-shift-l = "move --right"
+          alt-h = "focus left"
+          alt-j = "focus down"
+          alt-k = "focus up"
+          alt-l = "focus right"
+          alt-shift-h = "move left"
+          alt-shift-j = "move down"
+          alt-shift-k = "move up"
+          alt-shift-l = "move right"
           alt-1 = "workspace 1"
           alt-2 = "workspace 2"
           alt-3 = "workspace 3"
@@ -146,17 +139,17 @@ in
           alt-7 = "workspace 7"
           alt-8 = "workspace 8"
           alt-9 = "workspace 9"
-          alt-shift-1 = "move-to-workspace 1"
-          alt-shift-2 = "move-to-workspace 2"
-          alt-shift-3 = "move-to-workspace 3"
-          alt-shift-4 = "move-to-workspace 4"
-          alt-shift-5 = "move-to-workspace 5"
-          alt-shift-6 = "move-to-workspace 6"
-          alt-shift-7 = "move-to-workspace 7"
-          alt-shift-8 = "move-to-workspace 8"
-          alt-shift-9 = "move-to-workspace 9"
+          alt-shift-1 = "move-node-to-workspace 1"
+          alt-shift-2 = "move-node-to-workspace 2"
+          alt-shift-3 = "move-node-to-workspace 3"
+          alt-shift-4 = "move-node-to-workspace 4"
+          alt-shift-5 = "move-node-to-workspace 5"
+          alt-shift-6 = "move-node-to-workspace 6"
+          alt-shift-7 = "move-node-to-workspace 7"
+          alt-shift-8 = "move-node-to-workspace 8"
+          alt-shift-9 = "move-node-to-workspace 9"
           alt-tab = "workspace-back-and-forth"
-          alt-shift-tab = "move-workspace-to-monitor --wrap-around-next"
+          alt-shift-tab = "move-workspace-to-monitor --wrap-around next"
           alt-slash = "fullscreen"
           alt-space = "layout floating tiling"
           alt-r = "reload-config"
