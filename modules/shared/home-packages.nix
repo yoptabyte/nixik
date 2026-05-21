@@ -27,6 +27,9 @@ with pkgs; [
   # Terminal (Linux-only in nixpkgs)
   (if stdenv.hostPlatform.isLinux then ghostty else null)
 
+  # AI coding agent
+  opencode
+
   # Shell & prompt
   nushell
   starship
