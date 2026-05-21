@@ -29,7 +29,6 @@ in
   nixpkgs.config.allowUnfree = true;
 
   # Fonts
-  fonts.fontDir.enable = true;
   fonts.packages = with pkgs; [ nerd-fonts.zed-mono nerd-fonts.symbols-only ];
 
   # Hostname
