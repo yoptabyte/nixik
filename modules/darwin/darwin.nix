@@ -38,12 +38,13 @@ in
           result =
             let
               systemPkgs = inputs.nixpkgs.result.${cfg.system};
+              nixpkgsLib = systemPkgs.lib;
             in
             import (inputs.nix-darwin.src + "/eval-config.nix") {
-              lib = systemPkgs.lib;
+              lib = nixpkgsLib;
               modules = cfg.modules ++ [
-                { nixpkgs.source = lib.mkDefault inputs.nixpkgs.src; }
-                { nixpkgs.system = lib.mkDefault cfg.system; }
+                { nixpkgs.source = nixpkgsLib.mkDefault inputs.nixpkgs.src; }
+                { nixpkgs.system = nixpkgsLib.mkDefault cfg.system; }
               ];
               specialArgs = { inherit inputs; } // cfg.args;
             };
