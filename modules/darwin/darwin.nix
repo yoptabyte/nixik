@@ -41,7 +41,10 @@ in
             in
             import (inputs.nix-darwin.src + "/eval-config.nix") {
               lib = systemPkgs.lib;
-              modules = cfg.modules;
+              modules = cfg.modules ++ [
+                { nixpkgs.source = lib.mkDefault inputs.nixpkgs.src; }
+                { nixpkgs.system = lib.mkDefault cfg.system; }
+              ];
               specialArgs = { inherit inputs; } // cfg.args;
             };
         };
