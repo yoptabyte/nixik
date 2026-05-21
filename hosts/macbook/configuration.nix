@@ -78,9 +78,9 @@ in
   # Homebrew
   homebrew.enable = true;
   homebrew.brews = [ ];
-  homebrew.casks = [ "firefox" ];
+  homebrew.casks = [ "firefox" "ghostty" ];
   homebrew.onActivation.cleanup = "uninstall";
-  homebrew.autoUpdate = false;
+  homebrew.onActivation.autoUpdate = false;
 
   # Emacs launchd service
   launchd.user.agents.emacs = {

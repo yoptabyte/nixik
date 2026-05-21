@@ -24,8 +24,8 @@ with pkgs; [
   ripunzip
   unar
 
-  # Terminal
-  ghostty
+  # Terminal (Linux-only in nixpkgs)
+  (if stdenv.hostPlatform.isLinux then ghostty else null)
 
   # Shell & prompt
   nushell
