@@ -228,7 +228,7 @@ in
         ".emacs.d/themes/k380-graphite-theme.el".source = ../../modules/home/files/k380-graphite-theme.el;
       };
 
-      packages = (import ../../modules/shared/home-packages.nix { inherit pkgs; }) ++ [ myEmacs pkgs.aerospace pkgs.git-lfs ];
+      packages = lib.filter (p: p != null) ((import ../../modules/shared/home-packages.nix { inherit pkgs; }) ++ [ myEmacs pkgs.aerospace pkgs.git-lfs ]);
     };
   };
 
