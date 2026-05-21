@@ -40,7 +40,6 @@ in
   time.timeZone = "Europe/Lisbon";
 
   # Locale
-  system.defaults.NSGlobalDomain.AppleLocale = "en_US@currency=EUR";
   system.defaults.NSGlobalDomain.AppleMeasurementUnits = "Centimeters";
   system.defaults.NSGlobalDomain.AppleMetricUnits = 1;
 
