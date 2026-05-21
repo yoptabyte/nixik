@@ -62,9 +62,8 @@ in
   # Screenshots
   system.defaults.screencapture.location = "~/Pictures/screenshots";
 
-  # Nix settings
-  nix.settings.experimental-features = "nix-command flakes";
-  nix.settings.trusted-users = [ "yoptabyte" "@admin" ];
+  # Nix settings (Determinate manages Nix itself)
+  nix.enable = false;
 
   # Users
   users.users.yoptabyte = {
