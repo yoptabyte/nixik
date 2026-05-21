@@ -77,21 +77,6 @@ in
 
   system.primaryUser = "yoptabyte";
 
-  # Git
-  programs.git = {
-    enable = true;
-    lfs.enable = true;
-    userName = "yoptabyte";
-    userEmail = "telinnikolai@gmail.com";
-    extraConfig = {
-      init.defaultBranch = "main";
-      core.editor = "nvim";
-      delta.enable = true;
-      delta.line-numbers = true;
-      delta.side-by-side = true;
-    };
-  };
-
   # Homebrew
   homebrew.enable = true;
   homebrew.brews = [ ];
@@ -218,6 +203,26 @@ in
           palette = 15=#c8c8c0
         '';
 
+        # Git config
+        ".gitconfig".text = ''
+          [user]
+          	name = yoptabyte
+          	email = telinnikolai@gmail.com
+          [init]
+          	defaultBranch = main
+          [core]
+          	editor = nvim
+          [delta]
+          	enable = true
+          	line-numbers = true
+          	side-by-side = true
+          [filter "lfs"]
+          	clean = git-lfs clean -- %f
+          	smudge = git-lfs smudge -- %f
+          	process = git-lfs filter-process
+          	required = true
+        '';
+
         # Emacs init.el
         ".emacs.d/init.el".source = ../../modules/shared/emacs-init.el;
 
@@ -225,7 +230,7 @@ in
         ".emacs.d/themes/k380-graphite-theme.el".source = ../../modules/home/files/k380-graphite-theme.el;
       };
 
-      packages = (import ../../modules/shared/home-packages.nix { inherit pkgs; }) ++ [ myEmacs pkgs.aerospace ];
+      packages = (import ../../modules/shared/home-packages.nix { inherit pkgs; }) ++ [ myEmacs pkgs.aerospace pkgs.git-lfs ];
     };
   };
 
