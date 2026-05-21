@@ -19,7 +19,7 @@ in
 {
   imports = [
     # Nixvim
-    inputs.nixvim.result.nixosModules.nixvim
+    inputs.nixvim.result.nixDarwinModules.nixvim
     ../../modules/home/nixvim.nix
 
     # Hjem nix-darwin module
