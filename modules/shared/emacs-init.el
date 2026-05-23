@@ -10,11 +10,15 @@
 ;; UI Basics
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-;; Fix dired with Nushell: use full path to ls
+;; Fix dired with Nushell: try GNU ls first, fall back to BSD ls
 (setq insert-directory-program
       (or (executable-find "gls")
+          "/opt/homebrew/bin/gls"
           "/run/current-system/sw/bin/ls"
           "ls"))
+;; BSD ls doesn't support --dired
+(when (equal insert-directory-program "ls")
+  (setq dired-use-ls-dired nil))
 
 ;; Nushell doesn't understand bash-style backslash escaping.
 ;; Use bash for Emacs internals (dired, shell-command), and
@@ -53,16 +57,29 @@
       auto-save-default nil)
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-;; Package bootstrap (Nix provides everything)
+;; Package bootstrap (MELPA)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+;; Refresh once to get MELPA package list
+(when (not package-archive-contents)
+  (package-refresh-contents))
 (require 'use-package)
-(setq use-package-always-ensure nil)
+(setq use-package-always-ensure t)
+
+;; Fix marginalia compat for Emacs 30 (seconds-to-string no longer takes extra args)
+(advice-add 'seconds-to-string :around
+  (lambda (orig secs &rest _)
+    (funcall orig secs)))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; General (leader key framework)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package general
-  :ensure nil
   :demand t
   :config
   (general-evil-setup t)
@@ -153,7 +170,6 @@
 ;; Evil Mode
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package evil
-  :ensure nil
   :demand t
   :init
   (setq evil-want-integration t
@@ -201,7 +217,6 @@
   (define-key evil-normal-state-map (kbd "C-0") 'text-scale-reset))
 
 (use-package evil-collection
-  :ensure nil
   :demand t
   :after evil
   :config
@@ -213,7 +228,6 @@
 ;; Drag stuff
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package drag-stuff
-  :ensure nil
   :demand t
   :bind
   (:map evil-visual-state-map
@@ -224,7 +238,6 @@
 ;; Completion (Vertico + Orderless + Marginalia)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package vertico
-  :ensure nil
   :demand t
   :init
   (vertico-mode 1)
@@ -232,7 +245,6 @@
   (setq vertico-cycle t))
 
 (use-package orderless
-  :ensure nil
   :demand t
   :config
   (setq completion-styles '(orderless basic))
@@ -241,7 +253,6 @@
         '((file (styles partial-completion)))))
 
 (use-package marginalia
-  :ensure nil
   :demand t
   :init
   (marginalia-mode 1))
@@ -250,11 +261,9 @@
 ;; Nerd Icons
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package nerd-icons
-  :ensure nil
   :demand t)
 
 (use-package nerd-icons-completion
-  :ensure nil
   :demand t
   :after marginalia
   :config
@@ -264,7 +273,6 @@
 ;; Consult
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package consult
-  :ensure nil
   :demand t
   :bind
   (([remap switch-to-buffer] . consult-buffer)
@@ -281,7 +289,6 @@
 ;; Which-key
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package which-key
-  :ensure nil
   :demand t
   :config
   (which-key-mode 1)
@@ -292,7 +299,6 @@
 ;; Treemacs
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package treemacs
-  :ensure nil
   :demand t
   :config
   (setq treemacs-width 35
@@ -349,7 +355,6 @@
         ("C--" . text-scale-decrease)))
 
 (use-package treemacs-evil
-  :ensure nil
   :demand t
   :after (treemacs evil)
   :config
@@ -358,7 +363,6 @@
     (kbd "C--") #'text-scale-decrease))
 
 (use-package treemacs-magit
-  :ensure nil
   :demand t
   :after (treemacs magit)
   :config
@@ -369,7 +373,6 @@
 ;; Diff-hl
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package diff-hl
-  :ensure nil
   :demand t
   :config
   (setq diff-hl-draw-borders nil
@@ -385,7 +388,6 @@
 ;; PDF Tools
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package pdf-tools
-  :ensure nil
   :demand t
   :config
   (pdf-tools-install)
@@ -436,7 +438,6 @@
 ;; Markdown
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package markdown-mode
-  :ensure nil
   :mode (("\\.md\\'" . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
   :config
@@ -446,7 +447,6 @@
 ;; Magit
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package magit
-  :ensure nil
   :demand t
   :bind ("C-x g" . magit-status))
 
@@ -454,7 +454,6 @@
 ;; Modeline
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package doom-modeline
-  :ensure nil
   :demand t
   :init
   (doom-modeline-mode 1)
@@ -465,14 +464,12 @@
 ;; Nix
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package nix-mode
-  :ensure nil
   :mode "\\.nix\\'")
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Eglot (LSP)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package eglot
-  :ensure nil
   :demand t
   :hook ((python-mode python-ts-mode rust-ts-mode nix-mode java-mode scala-mode markdown-mode) . eglot-ensure))
 
@@ -490,6 +487,7 @@
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Server (only if not already running)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(require 'server)
 (unless (server-running-p)
   (server-start))
 

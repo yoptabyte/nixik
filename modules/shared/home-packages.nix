@@ -29,6 +29,7 @@ with pkgs; [
 
   # AI coding agent
   opencode
+  t3code
 
   # Shell & prompt
   nushell
