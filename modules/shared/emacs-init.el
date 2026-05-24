@@ -13,7 +13,7 @@
 ;; Fix dired with Nushell: try GNU ls first, fall back to BSD ls
 (setq insert-directory-program
       (or (executable-find "gls")
-          "/opt/homebrew/bin/gls"
+          (and (file-executable-p "/opt/homebrew/bin/gls") "/opt/homebrew/bin/gls")
           "/run/current-system/sw/bin/ls"
           "ls"))
 ;; BSD ls doesn't support --dired

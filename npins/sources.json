@@ -22,9 +22,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "3e3705b93233480f18274620f5e57c1c7021bf85",
-      "url": "https://github.com/ghostty-org/ghostty/archive/3e3705b93233480f18274620f5e57c1c7021bf85.tar.gz",
-      "hash": "sha256-Yf6GbJg+FjHWbSSGb+UZ1xn/jhCQT/d9s3+K8wBmGQg="
+      "revision": "d5d8cef4d3834cc8999eb9344066b0960b033f2d",
+      "url": "https://github.com/ghostty-org/ghostty/archive/d5d8cef4d3834cc8999eb9344066b0960b033f2d.tar.gz",
+      "hash": "sha256-DgdXilZcUCEQdOcgt2+Aj77+up2OkdBFg5Q6En5PUB0="
     },
     "helium": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "d07b924b2e8389821373ff303057b1af75158881",
-      "url": "https://github.com/schembriaiden/helium-browser-nix-flake/archive/d07b924b2e8389821373ff303057b1af75158881.tar.gz",
-      "hash": "sha256-4zTqjkq4jMrMlu03i/n9w8drbGft4yeFNB8bcnTaI+o="
+      "revision": "4e6b8bdd6692db7f2357e4dd86444914e53ec095",
+      "url": "https://github.com/schembriaiden/helium-browser-nix-flake/archive/4e6b8bdd6692db7f2357e4dd86444914e53ec095.tar.gz",
+      "hash": "sha256-7Wcp38Saw8cnyfc1OyjsxiF0btKBaL5KcHV+q9ljsns="
     },
     "helix": {
       "type": "Git",
@@ -61,9 +61,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "37efab66e4fe6589391e68aee5e1d38f2dbb6afd",
-      "url": "https://github.com/feel-co/hjem/archive/37efab66e4fe6589391e68aee5e1d38f2dbb6afd.tar.gz",
-      "hash": "sha256-jRjJ25zogNMYQcmHMPzEtNtfvQt4yT1MMNXYviWYZYI="
+      "revision": "77bf113e3ce91c6632def66222198561437853dc",
+      "url": "https://github.com/feel-co/hjem/archive/77bf113e3ce91c6632def66222198561437853dc.tar.gz",
+      "hash": "sha256-Zh9+WMsxDbLVWwhccXjLW+PYO/5ZyUFQLZdYydycbx8="
     },
     "hjem-rum": {
       "type": "Git",
@@ -87,9 +87,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "7f93255b66e5ec90d4daa2cb44695468cf0866bd",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/7f93255b66e5ec90d4daa2cb44695468cf0866bd.tar.gz",
-      "hash": "sha256-2X+kHfxdzrlUPCqIoj3TjmacnqD+AyofvpUviFR8IlE="
+      "revision": "903de1ddc1ad2f17f7993f1a9e34aa68e4e54f5e",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/903de1ddc1ad2f17f7993f1a9e34aa68e4e54f5e.tar.gz",
+      "hash": "sha256-+T3BdQJzgKqk9n7ZucJLof6XN/+PhlmthdrQNy6kqBA="
     },
     "nilla": {
       "type": "GitRelease",
@@ -158,9 +158,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "f83fc3c307e74bc5fd5adb7eb6b8b13ffd2a36e1",
-      "url": "https://github.com/nixos/nixpkgs/archive/f83fc3c307e74bc5fd5adb7eb6b8b13ffd2a36e1.tar.gz",
-      "hash": "sha256-cCO8aTqss5x9Ky8GWkpY0Hy5fyTZEbtifSUV8QjSzic="
+      "revision": "29916453413845e54a65b8a1cf996842300cd299",
+      "url": "https://github.com/nixos/nixpkgs/archive/29916453413845e54a65b8a1cf996842300cd299.tar.gz",
+      "hash": "sha256-Ap9KJX+5xHIn3bPIpfNgT6MEXdAECECwo4/rmlQD74M="
     },
     "nixvim": {
       "type": "Git",
@@ -171,9 +171,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "4503b3c5e99c825ca6055a393f1bb3c95e68ba16",
-      "url": "https://github.com/nix-community/nixvim/archive/4503b3c5e99c825ca6055a393f1bb3c95e68ba16.tar.gz",
-      "hash": "sha256-kNCxRBKYMzX7PC4AGiHV4MV2A0SlBvP/89LJVB/mIDs="
+      "revision": "1a380f12453ba97ad8cc9c60f223afb1cb8bace8",
+      "url": "https://github.com/nix-community/nixvim/archive/1a380f12453ba97ad8cc9c60f223afb1cb8bace8.tar.gz",
+      "hash": "sha256-qjLcUp7DBpmSUL+nVjLymp2nEvAzeKKoAVDCRgZYxFk="
     },
     "vicinae": {
       "type": "Git",
@@ -184,9 +184,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "c88debfbdd68cfcec32a32dc06a26607178270fc",
-      "url": "https://github.com/vicinaehq/vicinae/archive/c88debfbdd68cfcec32a32dc06a26607178270fc.tar.gz",
-      "hash": "sha256-EbIepv79FSCZ2nOdbQn5lXaPJs4zTFwyVQwDKVfsVgQ="
+      "revision": "4bd16c0863eee34e6b6801ff328766e22574282c",
+      "url": "https://github.com/vicinaehq/vicinae/archive/4bd16c0863eee34e6b6801ff328766e22574282c.tar.gz",
+      "hash": "sha256-WYLDAw6+uFeR0I6szgzxKoq723hLQyqBn4TZhC1Bpt8="
     },
     "xlibre-overlay": {
       "type": "Git",
