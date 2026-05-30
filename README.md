@@ -1,6 +1,6 @@
 # NixOS Configuration (Non-Flake)
 
-A modular NixOS configuration for the **Dell XPS 15 9550** laptop, built without flakes using **Npins + Nilla + Hjem**.
+A modular NixOS configuration for **Dell XPS 15 9550**, **ThinkPad X390**, and **MacBook**, built without flakes using **Npins + Nilla + Hjem**.
 
 ## Stack
 
@@ -15,6 +15,10 @@ A modular NixOS configuration for the **Dell XPS 15 9550** laptop, built without
 
 ## Hardware
 
+Per-host hardware configs live in `hosts/<name>/hardware-configuration.nix`.
+
+The **Dell XPS 15 9550** (`hosts/xps15_9550/`):
+
 - **CPU**: Intel Core i7-6700HQ
 - **GPU**: Intel HD Graphics 530 + NVIDIA GeForce GTX 960M (PRIME offload)
 - **Display**: 15.6" 4K touchscreen
@@ -25,18 +29,20 @@ A modular NixOS configuration for the **Dell XPS 15 9550** laptop, built without
 ```
 nixos-config/
 ├── hosts/
+│   ├── macbook/
+│   │   └── configuration.nix
+│   ├── thinkpad_x390/
+│   │   ├── configuration.nix
+│   │   └── hardware-configuration.nix
 │   └── xps15_9550/
-│       ├── configuration.nix       # Host config + Hjem home
+│       ├── configuration.nix
 │       └── hardware-configuration.nix
 ├── modules/
 │   ├── nixos/                      # System modules
+│   │   ├── desktop/                # sway, cosmic, wayfire, xfce
+│   │   ├── acestream.nix
 │   │   ├── browsers.nix
 │   │   ├── creative.nix
-│   │   ├── desktop/
-│   │   │   ├── sway.nix            # Sway WM config
-│   │   │   ├── cosmic.nix
-│   │   │   ├── wayfire.nix
-│   │   │   └── xfce.nix
 │   │   ├── emacs.nix               # Emacs + k380-graphite theme
 │   │   ├── gaming.nix
 │   │   ├── llm-agents.nix
@@ -47,9 +53,10 @@ nixos-config/
 │   └── home/
 │       ├── files/                  # Static config files
 │       │   ├── k380-graphite-theme.el
-│       │   ├── p10k.zsh
+│       │   ├── starship.toml
 │       │   ├── sway-config
 │       │   └── ...
+│       ├── hjem/
 │       └── nixvim.nix              # Nixvim configuration
 ├── xlibre-build-options/           # XLibre X11 server overrides
 │   ├── driver-choice.nix
@@ -174,4 +181,4 @@ Remote: `git@github.com:yoptabyte/nixik.git`
 
 ## License
 
-MIT / Apache-2.0 (your choice)
+MIT — see [LICENSE](LICENSE).
