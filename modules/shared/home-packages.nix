@@ -31,6 +31,9 @@ with pkgs; [
   opencode
   t3code
 
+  # Binary cache push
+  cachix
+
   # Shell & prompt
   nushell
   starship

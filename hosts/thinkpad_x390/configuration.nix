@@ -14,6 +14,7 @@ in
     ../../modules/nixos/productivity.nix
     ../../modules/nixos/emacs.nix
     ../../modules/nixos/social.nix
+    # ../../modules/nixos/acestream.nix
     ../../modules/nixos/desktop/sway.nix
 
     # Hjem home manager module
@@ -376,7 +377,9 @@ in
         }
 
         $env.STARSHIP_CONFIG = ($env.HOME | path join ".config" "starship.toml")
-        $env.PROMPT_COMMAND = {|| starship prompt }
+        if (which starship | length) > 0 {
+          $env.PROMPT_COMMAND = {|| starship prompt }
+        }
       '';
 
       # Starship config

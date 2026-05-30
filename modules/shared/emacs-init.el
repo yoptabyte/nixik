@@ -26,6 +26,13 @@
 (setq shell-file-name "/run/current-system/sw/bin/bash")
 (setq explicit-shell-file-name (executable-find "nu"))
 
+;; Ensure Nix-installed tools (rg, fd, etc.) are in exec-path
+(dolist (dir (list "/run/current-system/sw/bin"
+                   "/etc/profiles/per-user/yoptabyte/bin"
+                   (expand-file-name "~/.nix-profile/bin")))
+  (when (file-directory-p dir)
+    (add-to-list 'exec-path dir)))
+
 (menu-bar-mode -1)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
@@ -75,6 +82,21 @@
 (advice-add 'seconds-to-string :around
   (lambda (orig secs &rest _)
     (funcall orig secs)))
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; Org-babel: code execution in .org files
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((emacs-lisp . t)
+   (shell . t)
+   (python . t)
+   (rust . t)
+   (go . t)
+   (java . t)
+   (C . t)))
+
+;; ob-scala is not available in MELPA or nixpkgs, skip for now
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; General (leader key framework)
@@ -129,7 +151,8 @@
     "fb" '(consult-buffer :which-key "buffer")
     "fo" '(consult-recent-file :which-key "recent")
     "fr" '(consult-recent-file :which-key "recent")
-    "fs" '(save-buffer :which-key "save"))
+    "fs" '(save-buffer :which-key "save")
+    "f/" '(find-file :which-key "remote (tramp)"))
 
   ;; Open prefix
   (my/leader-keys
@@ -179,10 +202,10 @@
         evil-want-C-d-scroll t
         evil-want-C-w-delete t
         evil-want-C-w-kill t
-        evil-respect-visual-line-mode t)
+        evil-respect-visual-line-mode t
+        evil-undo-system 'undo-redo)
   :config
   (evil-mode 1)
-  (setq evil-undo-system 'undo-redo)
   (setq evil-emacs-state-cursor '("red" box))
   (setq evil-normal-state-cursor '("#f0c040" box))
   (setq evil-insert-state-cursor '("#f0c040" bar))
@@ -256,6 +279,27 @@
   :demand t
   :init
   (marginalia-mode 1))
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; Corfu (in-buffer completion UI)
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(use-package corfu
+  :demand t
+  :init
+  (global-corfu-mode 1)
+  :config
+  (setq corfu-cycle t
+        corfu-auto t
+        corfu-auto-delay 0.2
+        corfu-auto-prefix 2
+        corfu-quit-no-match t)
+  (corfu-popupinfo-mode 1)
+  :bind
+  (:map corfu-map
+        ("C-n" . corfu-next)
+        ("C-p" . corfu-previous)
+        ("<tab>" . corfu-complete)
+        ("RET" . corfu-insert)))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Nerd Icons
@@ -444,6 +488,25 @@
   (setq markdown-fontify-code-blocks-natively t))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; Multi-vterm (terminal)
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(use-package multi-vterm
+  :demand t
+  :after vterm
+  :config
+  (setq multi-vterm-buffer-name "vterm"
+        multi-vterm-default-window-width 80
+        multi-vterm-default-window-height 20)
+  :bind
+  (:map vterm-mode-map
+        ("C-<tab>" . multi-vterm-next)
+        ("C-S-<tab>" . multi-vterm-prev)))
+
+(my/leader-keys
+  "o'" '(multi-vterm :which-key "terminal")
+  "o\"" '(multi-vterm-project :which-key "terminal (project)"))
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Magit
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package magit
@@ -467,11 +530,27 @@
   :mode "\\.nix\\'")
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; Go
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(use-package go-mode
+  :mode "\\.go\\'"
+  :hook (before-save . gofmt-before-save))
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; PHP
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(use-package php-mode
+  :mode "\\.php\\'")
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Eglot (LSP)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (use-package eglot
   :demand t
-  :hook ((python-mode python-ts-mode rust-ts-mode nix-mode java-mode scala-mode markdown-mode) . eglot-ensure))
+  :hook ((python-ts-mode rust-ts-mode go-ts-mode go-mode java-ts-mode java-mode
+          js-ts-mode typescript-ts-mode tsx-ts-mode csharp-ts-mode
+          css-ts-mode html-ts-mode php-mode php-ts-mode
+          scala-mode nix-mode markdown-mode) . eglot-ensure))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Treesitter
@@ -482,7 +561,60 @@
         (java-mode . java-ts-mode)
         (js-mode . js-ts-mode)
         (typescript-mode . typescript-ts-mode)
-        (json-mode . json-ts-mode)))
+        (tsx-mode . tsx-ts-mode)
+        (json-mode . json-ts-mode)
+        (csharp-mode . csharp-ts-mode)
+        (css-mode . css-ts-mode)
+        (html-mode . html-ts-mode)
+        (go-mode . go-ts-mode)))
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; TRAMP (remote files via SSH)
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(setq tramp-default-method "ssh"
+      tramp-verbose 2
+      tramp-auto-save-directory (expand-file-name "tramp-autosaves" user-emacs-directory)
+      tramp-persistency-file-name (expand-file-name "tramp-connection-history" user-emacs-directory))
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; Telega (Telegram client) — string-trim nil workaround
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(advice-add 'string-trim :before-until
+  (lambda (s &rest _)
+    (when (not (stringp s)) "")))
+
+;; Load API credentials from ~/.config/telega/env (KEY=VAL, one per line)
+(let ((env-file "~/.config/telega/env"))
+  (when (file-exists-p env-file)
+    (with-temp-buffer
+      (insert-file-contents env-file)
+      (dolist (line (split-string (buffer-string) "\n" t))
+        (when (string-match "^\\([A-Za-z_]+\\)=\\(.*\\)" line)
+          (set (intern (match-string 1 line)) (match-string 2 line)))))))
+
+(let ((env-id (or (getenv "TELEGA_API_ID")
+                  (and (file-exists-p "~/.config/telega/env")
+                       (with-temp-buffer
+                         (insert-file-contents "~/.config/telega/env")
+                         (catch 'found
+                           (dolist (line (split-string (buffer-string) "\n" t))
+                             (when (string-match "^TELEGA_API_ID=\\(.*\\)" line)
+                               (throw 'found (match-string 1 line)))))))))
+      (env-hash (or (getenv "TELEGA_API_HASH")
+                    (and (file-exists-p "~/.config/telega/env")
+                         (with-temp-buffer
+                           (insert-file-contents "~/.config/telega/env")
+                           (catch 'found
+                             (dolist (line (split-string (buffer-string) "\n" t))
+                               (when (string-match "^TELEGA_API_HASH=\\(.*\\)" line)
+                                 (throw 'found (match-string 1 line))))))))))
+  (when (and env-id env-hash)
+    (setq telega-api-id (string-to-number env-id)
+          telega-api-hash env-hash)
+    (condition-case err
+        (require 'telega)
+      (error (message "telega failed: %s" err)))))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Server (only if not already running)
