@@ -16,12 +16,12 @@ truncation_symbol = "…/"
 
 [c]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [cpp]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [docker_context]
@@ -31,12 +31,12 @@ format = '[ $symbol $context ]($style)'
 
 [elixir]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [elm]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [git_branch]
@@ -50,46 +50,46 @@ format = '[$all_status$ahead_behind ]($style)'
 
 [golang]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [gradle]
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [haskell]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [java]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [julia]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [nodejs]
 symbol = ""
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [nim]
 symbol = "󰆥 "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [rust]
 symbol = ""
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 [scala]
 symbol = " "
-style = "bold bg:#f0c040"
+style = "bold bg:#f0c040 fg:#28261f"
 format = '[ $symbol ($version) ]($style)'
 
 

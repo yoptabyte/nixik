@@ -14,11 +14,31 @@ in
         nixpkgs = {
           src = pins.nixpkgs;
           settings = {
-            configuration.allowUnfree = true;
+            configuration = {
+              allowUnfree = true;
+              permittedInsecurePackages = [ "electron-40.10.5" ];
+            };
             overlays = [
               (final: prev: if prev.stdenv.hostPlatform.isLinux then {
                 antigravity = final.callPackage (pins.antigravity + "/package.nix") { };
               } else { })
+              # anki 25.09.4: uv export of qt/pylib projects missing --no-dev pulls
+              # the root dev group (pytest -> iniconfig) into offline resolution.
+              # Fixed upstream in anki 26.08; remove once nixpkgs pin advances.
+              (final: prev: {
+                anki = prev.anki.overrideAttrs (old: {
+                  buildPhase = prev.lib.replaceStrings
+                    [
+                      "uv export --project qt --extra qt --extra audio"
+                      "uv export --project pylib | strip_versions"
+                    ]
+                    [
+                      "uv export --project qt --no-dev --extra qt --extra audio"
+                      "uv export --project pylib --no-dev | strip_versions"
+                    ]
+                    old.buildPhase;
+                });
+              })
             ];
           };
         };

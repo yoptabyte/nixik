@@ -20,9 +20,15 @@ with pkgs; [
 
   # Archive tools
   zip
+  unzip
   p7zip
   ripunzip
   unar
+  zstd
+
+  # Media players
+  vlc
+  audacity
 
   # Terminal (Linux-only in nixpkgs)
   (if stdenv.hostPlatform.isLinux then ghostty else null)
@@ -30,6 +36,9 @@ with pkgs; [
   # AI coding agent
   opencode
   t3code
+
+  # Binary cache push
+  cachix
 
   # Shell & prompt
   nushell

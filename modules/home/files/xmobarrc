@@ -1,0 +1,25 @@
+Config {
+  font = "xft:ZedMono Nerd Font:size=11:antialias=true:hinting=true",
+  additionalFonts = [
+    "xft:ZedMono Nerd Font:size=13:antialias=true"
+  ],
+  bgColor = "#282828",
+  fgColor = "#ebdbb2",
+  position = BottomH 36,
+  border = BottomB,
+  borderColor = "#504945",
+  borderWidth = 1,
+
+  commands = [
+    Run UnsafeStdinReader,
+    Run Com "bash" ["-c", "id=$(xprop -root _NET_ACTIVE_WINDOW 2>/dev/null | awk '{print $5}'); [ -n \"$id\" ] || exit 0; xprop -id \"$id\" _NET_WM_NAME WM_NAME 2>/dev/null | sed -n 's/^.*= //p' | sed 's/^\"//; s/\"$//' | cut -c1-80"] "title" 2,
+    Run Date "<fc=#a89984>%a %d/%m  %I:%M %p</fc>" "date" 60,
+    Run Com "bash" ["-c", "v=$(pulsemixer --get-volume 2>/dev/null | awk '{print $1}'); m=$(pulsemixer --get-mute 2>/dev/null); [ \"$m\" = \"1\" ] && printf '<fc=#fb4934> M</fc>' || { [ -n \"$v\" ] && printf ' %s%%' \"$v\" || printf ' ?'; }"] "volume" 3,
+    Run Com "bash" ["-c", "brightnessctl -m 2>/dev/null | awk -F, '{v=int($4); if (v>0) printf \"󰃠 %s%%\", v; else printf \"󰃠 ?\"}'"] "brightness" 3,
+    Run Com "bash" ["-c", "c=$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null); s=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null); if [ -z \"$c\" ]; then printf ' ?'; elif [ \"$s\" = \"Charging\" ]; then printf ' %s%%' \"$c\"; elif [ \"$c\" -le 10 ]; then printf '<fc=#cc241d> %s%%</fc>' \"$c\"; else printf ' %s%%' \"$c\"; fi"] "battery" 30
+  ],
+
+  alignSep = "}{",
+  sepChar  = "%",
+  template = " <fc=#d79921>λ</fc><fc=#504945> | </fc>%UnsafeStdinReader% <fc=#504945>|</fc> <fc=#ebdbb2>%title%</fc> <fc=#504945>|</fc> }{ <fc=#a89984>%date%</fc><fc=#504945> | </fc><fc=#a89984>%volume%</fc><fc=#504945> | </fc><fc=#a89984>%brightness%</fc><fc=#504945> | </fc><fc=#a89984>%battery%</fc> "
+}

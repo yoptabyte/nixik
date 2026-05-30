@@ -653,7 +653,9 @@
           }
 
           $env.STARSHIP_CONFIG = ($env.HOME | path join ".config" "starship.toml")
-          $env.PROMPT_COMMAND = {|| starship prompt }
+          if (which starship | length) > 0 {
+            $env.PROMPT_COMMAND = {|| starship prompt }
+          }
         '';
 
         # Starship config

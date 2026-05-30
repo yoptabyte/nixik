@@ -30,6 +30,7 @@
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
+    GTK_USE_PORTAL = "1";
   };
 
   xdg.portal = {
@@ -39,10 +40,23 @@
       pkgs.xdg-desktop-portal-gtk
     ];
     xdgOpenUsePortal = true;
+    # Общий fallback: FileChooser через gtk для всех десктопов
+    # (wlr не реализует FileChooser)
+    config.common = {
+      "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+    };
     config.sway = {
       default = lib.mkDefault [ "wlr" ];
-      "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-      "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+      "org.freedesktop.impl.portal.Screenshot"  = [ "wlr" ];
+      "org.freedesktop.impl.portal.ScreenCast"  = [ "wlr" ];
+      "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+    };
+    # XDG_CURRENT_DESKTOP=ewm (задаётся в ewm-direct скрипте)
+    config.ewm = {
+      default = lib.mkDefault [ "wlr" ];
+      "org.freedesktop.impl.portal.Screenshot"  = [ "wlr" ];
+      "org.freedesktop.impl.portal.ScreenCast"  = [ "wlr" ];
+      "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
     };
   };
 

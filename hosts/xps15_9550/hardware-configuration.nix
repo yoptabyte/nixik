@@ -31,13 +31,6 @@
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
-  # NVIDIA PRIME offload
-  hardware.nvidia.prime = {
-    offload.enable = true;
-    nvidiaBusId = "PCI:2:0:0";
-    intelBusId = "PCI:1:0:0";
-  };
-
-  # Enable early KMS for NVIDIA
-  boot.kernelParams = [ "nvidia-drm.fbdev=1" ];
+  # Enable early KMS for NVIDIA (required for modesetting + Wayland)
+  boot.kernelParams = [ "nvidia-drm.fbdev=1" "nvidia-drm.modeset=1" ];
 }

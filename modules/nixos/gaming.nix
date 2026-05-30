@@ -55,7 +55,7 @@ in
     godot_4           # Godot Engine 4.x
 
     # Wine / Proton (run Windows applications)
-    wine           # Wine (WoW64 by default)
+    wineWow64Packages.full  # Wine (WoW64, full build)
     winetricks     # Helper script
 
     # Lutris (game launcher)
@@ -80,5 +80,14 @@ in
   hardware.graphics = {
     enable = true;
     enable32Bit = true;
+    extraPackages = with pkgs; [
+      # Intel iGPU: VA-API hardware video decoding
+      intel-media-driver
+      # NOTE: vulkan-validation-layers removed from nixos-unstable @ 0bb7ec54
+      # — its update_deps.py needs git + network in the sandbox, so it can't
+      # build. It's a dev/debug tool, not a runtime driver, so it's not needed
+      # here. Steam/Proton bundle their own. Re-add when nixpkgs fixes it.
+    ];
+    extraPackages32 = [ ];
   };
 }

@@ -26,7 +26,7 @@ input * {
 }
 
 # Output
-output * bg ~/nix-wallpaper-k380.png fill
+output * bg ~/.background-image fill
 
 # Colors
 client.focused          #3c3836 #f0c040 #ebdbb2 #f0c040 #f0c040
@@ -53,7 +53,7 @@ bar {
 
 # Keybindings
 bindsym $mod+Return exec ghostty
-bindsym $mod+d exec wmenu-run
+bindsym $mod+d exec wmenu-run -nb '#28261F' -nf '#C8C8C0' -sb '#F0C040' -sf '#28261F'
 bindsym $mod+c exec vicinae open
 
 bindsym $mod+q kill
