@@ -1,0 +1,14 @@
+[user]
+name = "yoptabyte"
+email = "yoptabyte@example.com"
+
+[ui]
+default-command = "log"
+pager = "less -FRX"
+
+[signing]
+backend = "ssh"
+sign-all = true
+
+[git]
+push-bookmark-prefix = "yoptabyte/push-"

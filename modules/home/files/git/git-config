@@ -1,0 +1,11 @@
+[user]
+  name = yoptabyte
+  email = telinnikolai@gmail.com
+[core]
+  editor = nvim
+[init]
+  defaultBranch = main
+[delta]
+  enable = true
+  line-numbers = true
+  side-by-side = true

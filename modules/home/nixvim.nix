@@ -3,7 +3,6 @@
 {
   programs.nixvim = {
     enable = true;
-    defaultEditor = true;
     nixpkgs.useGlobalPackages = true;
     viAlias = true;
     vimAlias = true;
@@ -25,7 +24,7 @@
       scrolloff = 8;
       signcolumn = "yes";
       updatetime = 50;
-      colorcolumn = "80";
+      colorcolumn = "";
       cursorline = true;
       mouse = "a";
       clipboard = "unnamedplus";
@@ -60,6 +59,10 @@
       { mode = "n"; key = "<C-Left>";  action = ":vertical resize -2<CR>"; options = { desc = "Decrease window width"; }; }
       { mode = "n"; key = "<C-Right>"; action = ":vertical resize +2<CR>"; options = { desc = "Increase window width"; }; }
       # Buffers
+      { mode = "n"; key = "<leader>bb"; action = "<cmd>Telescope buffers<CR>"; options = { desc = "List and select buffers"; }; }
+      { mode = "n"; key = "<leader>bn"; action = "<cmd>bnext<CR>"; options = { desc = "Next buffer"; }; }
+      { mode = "n"; key = "<leader>bp"; action = "<cmd>bprevious<CR>"; options = { desc = "Previous buffer"; }; }
+      { mode = "n"; key = "<leader>bi"; action = ":buffer "; options = { desc = "Go to buffer by number or name"; }; }
       { mode = "n"; key = "<S-l>"; action = ":bnext<CR>";     options = { desc = "Next buffer"; }; }
       { mode = "n"; key = "<S-h>"; action = ":bprevious<CR>"; options = { desc = "Previous buffer"; }; }
       # Move text
@@ -89,7 +92,7 @@
       { mode = "n"; key = "<leader>fr"; action = "<cmd>Telescope registers<CR>";   options = { desc = "Find registers"; }; }
       { mode = "n"; key = "<leader>ft"; action = "<cmd>Telescope colorscheme<CR>"; options = { desc = "Find themes"; }; }
       # Neo-tree
-      { mode = "n"; key = "<leader>e"; action = ":Neotree toggle<CR>"; options = { desc = "Toggle file explorer"; }; }
+      { mode = "n"; key = "<leader>e"; action = ":Neotree toggle position=float<CR>"; options = { desc = "Toggle floating file explorer"; }; }
       { mode = "n"; key = "<leader>o"; action = ":Neotree focus<CR>";  options = { desc = "Focus file explorer"; }; }
       # Git
       { mode = "n"; key = "<leader>gg"; action = ":LazyGit<CR>";                                        options = { desc = "LazyGit"; }; }
@@ -162,8 +165,21 @@
         settings = {
           close_if_last_window = true;
           enable_refresh = true;
+          default_component_configs = {
+            file_size = { enabled = true; width = 10; required_width = 70; };
+            type = { enabled = true; width = 12; required_width = 82; };
+            last_modified = {
+              enabled = true;
+              width = 18;
+              required_width = 96;
+              format = "%Y-%m-%d %H:%M";
+            };
+          };
           window = {
-            width = 30;
+            position = "float";
+            width = 110;
+            height = 34;
+            popup_border_style = "rounded";
             mappings."<space>" = "none";
           };
           event_handlers = [{
@@ -178,7 +194,76 @@
           filesystem = {
             follow_current_file.enabled = true;
             use_libuv_file_watcher = true;
+            window.mappings = {
+              r = "rename";
+              "gP" = "chmod";
+            };
+            commands.chmod.__raw = ''
+              function(state)
+                local node = state.tree:get_node()
+                if not node or not node.path then return end
+
+                vim.ui.input({ prompt = "chmod (for example 664): " }, function(input)
+                  if not input then return end
+                  if not input:match("^[0-7][0-7][0-7][0-7]?$") then
+                    vim.notify("Enter an octal mode with three or four digits, for example 664", vim.log.levels.WARN)
+                    return
+                  end
+
+                  local ok, err = vim.uv.fs_chmod(node.path, tonumber(input, 8))
+                  if not ok then
+                    vim.notify("chmod failed: " .. tostring(err), vim.log.levels.ERROR)
+                    return
+                  end
+
+                  vim.schedule(function()
+                    require("neo-tree.sources.manager").refresh("filesystem")
+                  end)
+                end)
+              end
+            '';
+            components.permissions.__raw = ''
+              function(config, node, state)
+                local stat = node.path and vim.uv.fs_stat(node.path)
+                if not stat then return { text = "", highlight = "NeoTreeFileName" } end
+
+                local mode = stat.mode
+                local kind = bit.band(mode, 0xF000) == 0x4000 and "d"
+                  or bit.band(mode, 0xF000) == 0xA000 and "l" or "-"
+                local symbols = { "r", "w", "x", "r", "w", "x", "r", "w", "x" }
+                local bits = { 0x100, 0x80, 0x40, 0x20, 0x10, 0x8, 0x4, 0x2, 0x1 }
+                for index, mask in ipairs(bits) do
+                  if bit.band(mode, mask) == 0 then symbols[index] = "-" end
+                end
+
+                return { text = kind .. table.concat(symbols), highlight = "NeoTreeFileName" }
+              end
+            '';
           };
+          renderers.__raw = ''
+            {
+              directory = {
+                { "indent" }, { "icon" }, { "current_filter" },
+                { "container", content = {
+                  { "name", zindex = 10 }, { "symlink_target", zindex = 10 },
+                  { "clipboard", zindex = 10 }, { "diagnostics", errors_only = true, zindex = 20, align = "right", hide_when_expanded = true },
+                  { "git_status", zindex = 10, align = "right", hide_when_expanded = true },
+                  { "file_size", zindex = 10, align = "right" }, { "type", zindex = 10, align = "right" },
+                  { "last_modified", zindex = 10, align = "right" }, { "permissions", zindex = 10, align = "right" },
+                } },
+              },
+              file = {
+                { "indent" }, { "icon" },
+                { "container", content = {
+                  { "name", zindex = 10 }, { "symlink_target", zindex = 10 }, { "clipboard", zindex = 10 },
+                  { "modified", zindex = 20, align = "right" }, { "diagnostics", zindex = 20, align = "right" },
+                  { "git_status", zindex = 10, align = "right" }, { "file_size", zindex = 10, align = "right" },
+                  { "type", zindex = 10, align = "right" }, { "last_modified", zindex = 10, align = "right" },
+                  { "permissions", zindex = 10, align = "right" },
+                } },
+              },
+            }
+          '';
         };
       };
 
@@ -289,34 +374,34 @@
           options = {
             theme = {
               normal = {
-                a = { bg = "#f0c040"; fg = "#28261f"; gui = "bold"; };
-                b = { bg = "#302e26"; fg = "#c8c8c0"; };
-                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+                a = { bg = "#d65d0e"; fg = "#fbf1c7"; gui = "bold"; };
+                b = { bg = "#ebdbb2"; fg = "#3c3836"; };
+                c = { bg = "#fbf1c7"; fg = "#3c3836"; };
               };
               insert = {
-                a = { bg = "#a8d8a0"; fg = "#28261f"; gui = "bold"; };
-                b = { bg = "#302e26"; fg = "#c8c8c0"; };
-                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+                a = { bg = "#458588"; fg = "#fbf1c7"; gui = "bold"; };
+                b = { bg = "#ebdbb2"; fg = "#3c3836"; };
+                c = { bg = "#fbf1c7"; fg = "#3c3836"; };
               };
               visual = {
-                a = { bg = "#e8a020"; fg = "#28261f"; gui = "bold"; };
-                b = { bg = "#302e26"; fg = "#c8c8c0"; };
-                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+                a = { bg = "#98971a"; fg = "#fbf1c7"; gui = "bold"; };
+                b = { bg = "#ebdbb2"; fg = "#3c3836"; };
+                c = { bg = "#fbf1c7"; fg = "#3c3836"; };
               };
               replace = {
-                a = { bg = "#e8a020"; fg = "#28261f"; gui = "bold"; };
-                b = { bg = "#302e26"; fg = "#c8c8c0"; };
-                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+                a = { bg = "#98971a"; fg = "#fbf1c7"; gui = "bold"; };
+                b = { bg = "#ebdbb2"; fg = "#3c3836"; };
+                c = { bg = "#fbf1c7"; fg = "#3c3836"; };
               };
               command = {
-                a = { bg = "#f0c040"; fg = "#28261f"; gui = "bold"; };
-                b = { bg = "#302e26"; fg = "#c8c8c0"; };
-                c = { bg = "#28261f"; fg = "#c8c8c0"; };
+                a = { bg = "#d65d0e"; fg = "#fbf1c7"; gui = "bold"; };
+                b = { bg = "#ebdbb2"; fg = "#3c3836"; };
+                c = { bg = "#fbf1c7"; fg = "#3c3836"; };
               };
               inactive = {
-                a = { bg = "#28261f"; fg = "#888882"; gui = "bold"; };
-                b = { bg = "#28261f"; fg = "#888882"; };
-                c = { bg = "#28261f"; fg = "#888882"; };
+                a = { bg = "#fbf1c7"; fg = "#928374"; gui = "bold"; };
+                b = { bg = "#fbf1c7"; fg = "#928374"; };
+                c = { bg = "#fbf1c7"; fg = "#928374"; };
               };
             };
             component_separators = { left = ""; right = ""; };
@@ -333,31 +418,50 @@
         };
       };
 
-      bufferline = {
-        enable = false;
-      #   settings.options = {
-      #     mode = "buffers";
-      #     separator_style = "slant";
-      #     always_show_bufferline = true;
-      #     show_buffer_close_icons = true;
-      #     show_close_icon = false;
-      #     color_icons = true;
-      #   };
-      };
-
       nvim-autopairs.enable = true;
 
       comment = {
         enable = true;
         settings = {
           toggler  = { line = "<leader>/"; block = "<leader>bc"; };
-          opleader = { line = "<leader>/"; block = "<leader>b"; };
+          opleader = { line = "<leader>/"; block = "<leader>B"; };
         };
       };
 
       indent-blankline = {
         enable = true;
-        settings.scope.enabled = true;
+        luaConfig.pre = ''
+          -- Gruvbox Light rainbow indent guides
+          local indent_hooks = require("ibl.hooks")
+          local function set_indent_colors()
+            local colors = {
+              RainbowRed = "#9d0006",
+              RainbowYellow = "#b57614",
+              RainbowBlue = "#076678",
+              RainbowOrange = "#af3a03",
+              RainbowGreen = "#79740e",
+              RainbowViolet = "#8f3f71",
+              RainbowCyan = "#427b58",
+            }
+            for group, color in pairs(colors) do
+              vim.api.nvim_set_hl(0, group, { fg = color })
+            end
+          end
+          indent_hooks.register(indent_hooks.type.HIGHLIGHT_SETUP, set_indent_colors)
+          set_indent_colors()
+        '';
+        settings = {
+          indent.highlight = [
+            "RainbowRed"
+            "RainbowYellow"
+            "RainbowBlue"
+            "RainbowOrange"
+            "RainbowGreen"
+            "RainbowViolet"
+            "RainbowCyan"
+          ];
+          scope.enabled = true;
+        };
       };
 
       colorizer.enable = true;
@@ -420,84 +524,36 @@
     };
 
     extraPlugins = with pkgs.vimPlugins; [
+      gruvbox
       vim-sleuth
       hydra-nvim
       multicursors-nvim
     ];
 
     extraConfigLua = ''
-      -- K380 Graphite colour scheme
-      vim.cmd("highlight clear")
-      vim.cmd("set background=dark")
-      local hl = vim.api.nvim_set_hl
-      hl(0, "Normal",        { fg="#c8c8c0", bg="#28261F" })
-      hl(0, "NormalNC",      { fg="#c8c8c0", bg="#28261F" })
-      hl(0, "NormalFloat",   { fg="#c8c8c0", bg="#302e26" })
-      hl(0, "FloatBorder",   { fg="#3d3b30", bg="none" })
-      hl(0, "SignColumn",    { bg="none" })
-      hl(0, "EndOfBuffer",   { fg="#302e26", bg="none" })
-      hl(0, "CursorLine",    { bg="#302e26" })
-      hl(0, "CursorLineNr",  { fg="#f0c040", bold=true })
-      hl(0, "LineNr",        { fg="#48463a" })
-      hl(0, "ColorColumn",   { bg="#302e26" })
-      hl(0, "Visual",        { bg="#3d3b30" })
-      hl(0, "Search",        { fg="#28261f", bg="#f0c040" })
-      hl(0, "IncSearch",     { fg="#28261f", bg="#e8a020" })
-      hl(0, "Cursor",        { fg="#28261f", bg="#f0c040" })
-      hl(0, "StatusLine",    { fg="#f0c040", bg="#302e26" })
-      hl(0, "StatusLineNC",  { fg="#888882", bg="#28261f" })
-      hl(0, "TabLine",       { fg="#888882", bg="#28261f" })
-      hl(0, "TabLineSel",    { fg="#f0c040", bg="#302e26" })
-      hl(0, "TabLineFill",   { bg="#201e18" })
-      hl(0, "Pmenu",         { fg="#c8c8c0", bg="#302e26" })
-      hl(0, "PmenuSel",      { fg="#28261f", bg="#f0c040" })
-      hl(0, "PmenuSbar",     { bg="#302e26" })
-      hl(0, "PmenuThumb",    { bg="#f0c040" })
-      hl(0, "Comment",       { fg="#5a5848", italic=true })
-      hl(0, "Keyword",       { fg="#f0c040" })
-      hl(0, "Statement",     { fg="#f0c040" })
-      hl(0, "Conditional",   { fg="#f0c040" })
-      hl(0, "Repeat",        { fg="#f0c040" })
-      hl(0, "Function",      { fg="#a8d8a0" })
-      hl(0, "String",        { fg="#e8a020" })
-      hl(0, "Number",        { fg="#e8a020" })
-      hl(0, "Boolean",       { fg="#e8a020" })
-      hl(0, "Identifier",    { fg="#c8c8c0" })
-      hl(0, "Type",          { fg="#a8d8a0" })
-      hl(0, "Special",       { fg="#f0c040" })
-      hl(0, "PreProc",       { fg="#f0c040" })
-      hl(0, "Constant",      { fg="#e8a020" })
-      hl(0, "Error",         { fg="#e8a020", bg="#28261f" })
-      hl(0, "Todo",          { fg="#28261f", bg="#f0c040" })
-      hl(0, "DiagnosticError", { fg="#e8a020" })
-      hl(0, "DiagnosticWarn",  { fg="#f0c040" })
-      hl(0, "DiagnosticInfo",  { fg="#a8d8a0" })
-      hl(0, "DiagnosticHint",  { fg="#888882" })
-
-      vim.api.nvim_create_autocmd("ColorScheme", {
-        callback = function()
-          hl(0, "Normal",   { fg="#c8c8c0", bg="#28261F" })
-          hl(0, "NormalNC", { fg="#c8c8c0", bg="#28261F" })
-        end,
-      })
+      -- Gruvbox Light (standard/medium contrast)
+      vim.o.background = "light"
+      vim.g.gruvbox_contrast_light = "medium"
+      vim.g.gruvbox_italic = true
+      vim.cmd.colorscheme("gruvbox")
 
       -- Neo-tree colours
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "neo-tree",
         callback = function()
           local hl = vim.api.nvim_set_hl
-          hl(0, "NeoTreeNormal",       { fg="#c8c8c0", bg="none" })
-          hl(0, "NeoTreeNormalNC",     { fg="#c8c8c0", bg="none" })
-          hl(0, "NeoTreeCursorLine",   { bg="#302e26" })
-          hl(0, "NeoTreeRootName",     { fg="#c8c8c0", bold=true })
-          hl(0, "NeoTreeDirectoryName",{ fg="#c8c8c0" })
-          hl(0, "NeoTreeFileName",     { fg="#c8c8c0" })
-          hl(0, "NeoTreeGitAdded",     { fg="#a8d8a0" })
-          hl(0, "NeoTreeGitModified",  { fg="#e8a020" })
-          hl(0, "NeoTreeGitDeleted",   { fg="#e8a020" })
-          hl(0, "NeoTreeGitUntracked", { fg="#5a5848" })
-          hl(0, "NeoTreeIndentMarker", { fg="#48463a" })
-          hl(0, "NeoTreeWinSeparator", { fg="#3d3b30" })
+          hl(0, "NeoTreeNormal",       { fg="#3c3836", bg="none" })
+          hl(0, "NeoTreeNormalNC",     { fg="#3c3836", bg="none" })
+          hl(0, "NeoTreeCursorLine",   { bg="#ebdbb2" })
+          hl(0, "NeoTreeRootName",     { fg="#3c3836", bold=true })
+          hl(0, "NeoTreeDirectoryName",{ fg="#3c3836" })
+          hl(0, "NeoTreeFileName",     { fg="#3c3836" })
+          hl(0, "NeoTreeGitAdded",     { fg="#458588" })
+          hl(0, "NeoTreeGitModified",  { fg="#d79921" })
+          hl(0, "NeoTreeGitDeleted",   { fg="#cc241d" })
+          hl(0, "NeoTreeGitUntracked", { fg="#928374" })
+          hl(0, "NeoTreeIndentMarker", { fg="#a89984" })
+          hl(0, "NeoTreeWinSeparator", { fg="#d5c4a1" })
         end,
       })
 
@@ -512,7 +568,7 @@
 
       -- Per-window zoom
       local font_name   = "ZedMono Nerd Font"
-      local font_sizes  = { code = 14, neotree = 14 }
+      local font_sizes  = { code = 14, neotree = 11 }
       local function set_font(size) vim.o.guifont = font_name .. ":h" .. size end
       local function is_neotree()   return vim.bo.filetype == "neo-tree" end
       vim.api.nvim_create_user_command("ZoomIn",  function()

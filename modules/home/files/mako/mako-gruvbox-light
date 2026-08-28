@@ -1,0 +1,15 @@
+font=ZedMono Nerd Font 10
+background-color=#fbf1c7
+text-color=#3c3836
+border-color=#d65d0e
+progress-color=over #d79921
+border-size=2
+border-radius=0
+padding=12
+margin=10
+default-timeout=7000
+max-visible=5
+
+[urgency=critical]
+border-color=#cc241d
+default-timeout=0

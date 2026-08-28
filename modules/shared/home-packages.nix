@@ -15,7 +15,7 @@ with pkgs; [
   btop
   yazi
   zoxide
-  fastfetch
+  fetch
   onefetch
 
   # Archive tools
@@ -27,15 +27,7 @@ with pkgs; [
   zstd
 
   # Media players
-  vlc
   audacity
-
-  # Terminal (Linux-only in nixpkgs)
-  (if stdenv.hostPlatform.isLinux then ghostty else null)
-
-  # AI coding agent
-  opencode
-  t3code
 
   # Binary cache push
   cachix
@@ -45,4 +37,8 @@ with pkgs; [
   starship
   tmux
   delta
+] ++ lib.optionals stdenv.hostPlatform.isLinux [
+  # Darwin installs these applications through Homebrew.
+  vlc
+  ghostty
 ]

@@ -4,14 +4,14 @@
     # Knowledge base / notes
     obsidian
 
-    # Spaced repetition (flashcards)
-    anki
-
     # BitTorrent download manager
     qbittorrent
 
     # PDF / documents (vim-like viewer)
     zathura
+
+    # File manager
+    thunar
 
     # Editors
     helix

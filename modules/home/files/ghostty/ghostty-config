@@ -1,0 +1,14 @@
+font-family = ZedMono Nerd Font
+font-size = 11
+theme = Gruvbox Light
+background-opacity = 1.0
+background-blur = true
+cursor-style = block
+cursor-style-blink = true
+window-padding-x = 10
+window-padding-y = 10
+window-decoration = false
+clipboard-read = allow
+clipboard-write = allow
+mouse-scroll-multiplier = 1
+scrollback-limit = 0

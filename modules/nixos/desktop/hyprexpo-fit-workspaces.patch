@@ -1,0 +1,21 @@
+--- a/ScrollingOverview.cpp
++++ b/ScrollingOverview.cpp
+@@ -501,11 +501,15 @@ bool CScrollingOverview::refreshScene(const std::optional<SWorkspaceSnapshot>& initialSnapshot) {
+ 
+     if (specs.empty())
+         return false;
+     const int64_t terminalWorkspaceID = std::max<int64_t>(1, workspaces.back()->m_id + 1);
++    // Include the final empty-workspace row when fitting the scene vertically.
++    const double rowCount = static_cast<double>(workspaces.size() + 1);
++    const double rowGap = std::min(12.0, MON->m_size.y / (2.0 * rowCount));
++    const double rowHeight = std::max(1.0, (MON->m_size.y - rowGap * (rowCount - 1.0)) / rowCount);
+     const SSceneConfig sceneConfig{
+         .viewportWidth = MON->m_size.x,
+         .viewportHeight = MON->m_size.y,
+-        .rowHeight = std::max(64.0, MON->m_size.y * 0.68),
+-        .rowGap = std::max(12.0, MON->m_size.y * 0.025),
++        .rowHeight = rowHeight,
++        .rowGap = rowGap,
+         .columnGap = std::max(8.0, MON->m_size.x * 0.008),
+         .terminalWorkspaceID = terminalWorkspaceID,
+     };

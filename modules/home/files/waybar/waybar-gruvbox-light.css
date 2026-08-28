@@ -1,0 +1,129 @@
+@define-color background #fbf1c7;
+@define-color background-alt #ebdbb2;
+@define-color selection #d5c4a1;
+@define-color foreground #3c3836;
+@define-color muted #928374;
+@define-color blue #458588;
+@define-color green #98971a;
+@define-color yellow #d79921;
+@define-color red #cc241d;
+
+* {
+  border: none;
+  min-height: 0;
+  font-family: "ZedMono Nerd Font";
+  font-size: 12px;
+  font-weight: normal;
+}
+
+window#waybar {
+  background: transparent;
+  color: @foreground;
+}
+
+#waybar > box {
+  background: @background;
+  color: @foreground;
+  border: 2px solid alpha(@foreground, 0.16);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px alpha(#000000, 0.35);
+  margin: 0 2px 2px 1px;
+  transition: background-color 0.5s;
+}
+
+.modules-left {
+  margin: 0;
+  padding: 1px 0;
+  text-shadow: 0 0 2px alpha(@foreground, 0.18);
+}
+
+.modules-center {
+  border-left: 1px solid alpha(@foreground, 0.18);
+  border-right: 1px solid alpha(@foreground, 0.18);
+  padding: 0 10px;
+  text-shadow: 0 0 2px alpha(@foreground, 0.18);
+}
+
+.modules-right {
+  margin-right: 2px;
+  text-shadow: 0 0 2px alpha(@foreground, 0.18);
+}
+
+#custom-nixos {
+  color: @blue;
+  font-size: 17px;
+  margin: 0 14px 0 6px;
+  padding-top: 1px;
+}
+
+#workspaces {
+  background: alpha(@foreground, 0.08);
+  border-radius: 2px;
+  margin: 1px;
+  padding: 1px 0;
+}
+
+#workspaces button {
+  background: alpha(@foreground, 0.72);
+  border-radius: 2px;
+  color: @background;
+  font-size: 8px;
+  margin: 1px;
+  min-height: 8px;
+  min-width: 15px;
+  opacity: 0.75;
+  padding: 1px;
+  transition: all 0.15s ease-in-out;
+}
+
+#workspaces button.active {
+  background: @green;
+  color: @background;
+  min-width: 25px;
+  opacity: 1;
+}
+
+#workspaces button:hover {
+  background: @selection;
+  color: @foreground;
+  opacity: 1;
+}
+
+#workspaces button.empty { opacity: 0.25; }
+
+#mpris {
+  color: @foreground;
+  font-size: 10px;
+  margin: 0 2px 0 4px;
+}
+
+#tray,
+#network,
+#pulseaudio,
+#cpu,
+#battery {
+  margin: 0 6px;
+  min-width: 12px;
+}
+
+#battery.warning { color: @yellow; }
+
+#battery.critical {
+  color: @red;
+  animation: blink 0.5s steps(12) infinite alternate;
+}
+
+tooltip {
+  background: @background;
+  border: 1px solid alpha(@foreground, 0.8);
+  border-radius: 8px;
+  box-shadow: 1px 1px 3px alpha(#000000, 0.25);
+  padding: 4px;
+}
+
+tooltip label {
+  color: @foreground;
+  font-size: 10px;
+}
+
+@keyframes blink { to { color: @background; } }

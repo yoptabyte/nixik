@@ -2,7 +2,7 @@
 
 let
   cfg = config.modules.nixos.emacs;
-  emacsLucid = pkgs.emacs30.override {
+  emacsLucid = pkgs.emacs.override {
     withGTK3 = false;
     withPgtk = false;
     withAthena = true;
@@ -44,7 +44,7 @@ let
     sha256 = "sha256-/UrUNZQcoJEprN5MDAnB4TtQjPZY1/3QwTWJfaQFLZM=";
   };
   # Override nerd-icons in both emacs package sets so deps (nerd-icons-completion, etc.) also use fixed src
-  myEmacsPkgs = pkgs.emacs30-pgtk.pkgs.overrideScope (final: prev: {
+  myEmacsPkgs = pkgs.emacs-pgtk.pkgs.overrideScope (final: prev: {
     nerd-icons = prev.nerd-icons.overrideAttrs (_: { src = nerd-icons-src; });
   });
   myEmacsLucidPkgs = emacsLucid.pkgs.overrideScope (final: prev: {
@@ -55,7 +55,7 @@ let
   myEmacsLucid = (myEmacsLucidPkgs.withPackages (epkgs:
     basePackages epkgs ++ cfg.extraPackages epkgs));
   basePackages = epkgs: with epkgs; [
-    vertico orderless marginalia consult which-key corfu
+    vertico orderless marginalia consult which-key corfu doom-modeline
     evil evil-collection general
     drag-stuff
     treemacs treemacs-evil treemacs-magit
@@ -82,6 +82,8 @@ let
     # Typst
     (typst-mode epkgs)
     (zen-mode epkgs)
+    # Java
+    yasnippet yasnippet-snippets
     # Debug Adapter Protocol
     dape
     perspective
@@ -101,12 +103,6 @@ in
       default = epkgs: [];
       description = "Extra Emacs packages to include via withPackages";
     };
-    basePackages = lib.mkOption {
-      type = lib.types.functionTo (lib.types.listOf lib.types.package);
-      default = basePackages;
-      description = "Base Emacs packages (used by ewm and others)";
-      internal = true;
-    };
   };
 
   config = {
@@ -117,15 +113,14 @@ in
 
     environment.systemPackages = [
       myEmacs myEmacsLucidWrapped pkgs.rust-analyzer pkgs.imagemagick pkgs.file
-      # zip/p7zip/ripunzip/unar are in home-packages.nix; add only what's missing there
-      pkgs.unzip pkgs.zstd
+      # Java/Spring (jdtls, JDK, Maven) — НЕ системно: через flake devShell + envrc per-project
     ];
 
     systemd.user.services.emacs = {
       description = "Emacs daemon (pgtk/Wayland)";
-      after = [ "sway-session.target" ];
-      partOf = [ "sway-session.target" ];
-      wantedBy = [ "sway-session.target" ];
+      after = [ "graphical-session.target" ];
+      partOf = [ "graphical-session.target" ];
+      wantedBy = [ "graphical-session.target" ];
       unitConfig.ConditionEnvironment = "WAYLAND_DISPLAY";
       serviceConfig = {
         Type = "simple";
@@ -151,7 +146,9 @@ in
 
     hjem.users.yoptabyte = {
       files = {
-        ".emacs.d/themes/k380-graphite-theme.el".source = ../../modules/home/files/k380-graphite-theme.el;
+        ".emacs.d/themes/k380-graphite-theme.el".source = ../../modules/home/files/emacs/k380-graphite-theme.el;
+        ".emacs.d/themes/kanagawa-lotus-theme.el".source = ../../modules/home/files/emacs/kanagawa-lotus-theme.el;
+        ".emacs.d/themes/gruvbox-light-theme.el".source = ../../modules/home/files/emacs/gruvbox-light-theme.el;
         ".emacs.d/init.el".source = ../../modules/shared/emacs-init.el;
       };
     };

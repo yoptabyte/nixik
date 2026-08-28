@@ -1,0 +1,7 @@
+[mgr]
+prepend_keymap = [
+  { on = [ "c", "z" ], run = "shell 'zip -r archive.zip %s' --interactive --confirm", desc = "Create zip archive" },
+  { on = [ "c", "7" ], run = "shell '7z a archive.7z %s' --interactive --confirm", desc = "Create 7z archive" },
+  { on = [ "x", "z" ], run = "shell 'ripunzip unzip-file %s' --confirm", desc = "Extract zip with ripunzip" },
+  { on = [ "x", "a" ], run = "shell 'unar %s' --confirm", desc = "Extract archive with unar" },
+]

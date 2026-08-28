@@ -1,0 +1,26 @@
+diff --git a/vendor/libghostty-vt/src/build/GhosttyLibVt.zig b/vendor/libghostty-vt/src/build/GhosttyLibVt.zig
+--- a/vendor/libghostty-vt/src/build/GhosttyLibVt.zig
++++ b/vendor/libghostty-vt/src/build/GhosttyLibVt.zig
+@@ -231,6 +231,7 @@ fn initLib(
+         .linkage = linkage,
+         .root_module = zig.vt_c,
+         .version = zig.version,
++        .use_llvm = true,
+     });
+     lib.installHeadersDirectory(
+         b.path("include/ghostty"),
+@@ -237,11 +238,9 @@ fn initLib(
+     );
+ 
+     if (kind == .static) {
+-        // These must be bundled since we're compiling into a static lib.
+-        // Otherwise, you get undefined symbol errors. This could cause
+-        // problems if you're linking multiple static Zig libraries but
+-        // we'll cross that bridge when we get to it.
+-        lib.bundle_compiler_rt = true;
++        // Herdr links GCC's runtime. Zig 0.16's bundled runtime has malformed
++        // ELF unwind data, so let GCC supply the arithmetic builtins instead.
++        lib.bundle_compiler_rt = false;
+         lib.bundle_ubsan_rt = true;
+ 
+         // Enable PIC so the static library can be linked into PIE

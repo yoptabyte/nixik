@@ -1,0 +1,38 @@
+[opener]
+edit = [
+  { run = "nvim %s", block = true, desc = "Edit in Neovim" },
+]
+doc = [
+  { run = "zathura %s", orphan = true, desc = "View document" },
+]
+img = [
+  { run = "nsxiv %s", orphan = true, desc = "View images" },
+]
+extract = [
+  { run = "unar %s", block = true, desc = "Extract archive" },
+]
+
+[open]
+rules = [
+  { url = "*.nix", use = "edit" },
+  { url = "*.rs",  use = "edit" },
+  { url = "*.py",  use = "edit" },
+  { url = "*.ts",  use = "edit" },
+  { url = "*.tsx", use = "edit" },
+  { url = "*.js",  use = "edit" },
+  { url = "*.jsx", use = "edit" },
+  { url = "*.lua", use = "edit" },
+  { url = "*.md",  use = "edit" },
+  { url = "*.txt", use = "edit" },
+  { mime = "application/pdf", use = "doc" },
+  { url = "*.epub", use = "doc" },
+  { url = "*.djvu", use = "doc" },
+  { mime = "image/*", use = "img" },
+  { mime = "application/*zip", use = "extract" },
+  { mime = "application/x-7z-compressed", use = "extract" },
+  { mime = "application/x-rar", use = "extract" },
+  { mime = "application/x-tar", use = "extract" },
+  { mime = "application/gzip", use = "extract" },
+  { mime = "application/x-bzip2", use = "extract" },
+  { mime = "application/x-xz", use = "extract" },
+]

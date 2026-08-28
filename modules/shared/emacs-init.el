@@ -20,7 +20,8 @@
 ;; Theme
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 (add-to-list 'custom-theme-load-path "~/.emacs.d/themes")
-(load-theme 'k380-graphite t)
+(load (expand-file-name "gruvbox-light-theme.el" "~/.emacs.d/themes/") nil nil)
+(enable-theme 'gruvbox-light)
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; UI Basics
@@ -573,7 +574,7 @@
   :bind ("C-x g" . magit-status))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-;; Custom Modeline (replaces doom-modeline)
+;; Doom modeline
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ;; Flymake segment — doom-style с nerd-icons, обновляется через hook, кэшируется per-buffer
@@ -696,8 +697,10 @@
                                               ,(+ 3 (string-width
                                                      (format-mode-line
                                                       (list my/flymake-string global-mode-string " %m ")))))))))
-               my/flymake-string
-               global-mode-string
+               ;; Keep these as symbols: their buffer-local/current values must be
+               ;; resolved every time the mode line is rendered.
+               'my/flymake-string
+               'global-mode-string
                (propertize " %m " 'face 'font-lock-string-face)))
 
 ;; Volume indicator in modeline — event-driven via wpctl subscribe
@@ -744,6 +747,19 @@
 
 (add-hook 'emacs-startup-hook #'my/volume-start-monitor)
 (add-to-list 'global-mode-string 'my/volume-string t)
+
+;; Replace the legacy hand-written mode line above with doom-modeline.  It
+;; inherits the active Kanagawa Lotus faces defined in the custom theme.
+(use-package doom-modeline
+  :demand t
+  :config
+  (setq doom-modeline-height 28
+        doom-modeline-bar-width 4
+        doom-modeline-buffer-file-name-style 'truncate-upto-project
+        doom-modeline-icon t
+        doom-modeline-major-mode-icon t
+        doom-modeline-minor-modes nil)
+  (doom-modeline-mode 1))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Perspective (workspaces)
@@ -945,7 +961,54 @@
     '(typst-mode . ("tinymist")))
   ;; Haskell — haskell-language-server (из flake: haskellPackages.haskell-language-server)
   (add-to-list 'eglot-server-programs
-    '((haskell-mode haskell-literate-mode) . ("haskell-language-server-wrapper" "--lsp"))))
+    '((haskell-mode haskell-literate-mode) . ("haskell-language-server-wrapper" "--lsp")))
+  ;; Java — Eclipse JDT Language Server (из flake devShell: pkgs.jdt-language-server)
+  (add-to-list 'eglot-server-programs
+    '((java-mode java-ts-mode) . ("jdtls"))))
+
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+;; Java / Spring Boot (jdtls + Maven + yasnippet)
+;; jdtls/JDK/Maven — из flake devShell проекта (см. flake.nix + .envrc с "use flake").
+;; Локальные лидеры: , r = spring-boot:run, , t = mvn test, , b = code actions
+;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(use-package yasnippet
+  :demand t
+  :config
+  (yas-global-mode 1))
+
+(defun my/java-maven-root ()
+  "Return project root containing pom.xml (or default-directory)."
+  (or (locate-dominating-file default-directory "pom.xml")
+      default-directory))
+
+(defun my/java-run-project ()
+  "Run Spring Boot app via Maven (mvn spring-boot:run)."
+  (interactive)
+  (let ((default-directory (my/java-maven-root)))
+    (compile "mvn spring-boot:run")))
+
+(defun my/java-test-project ()
+  "Run Maven tests for the current project."
+  (interactive)
+  (let ((default-directory (my/java-maven-root)))
+    (compile "mvn test")))
+
+(my/leader-keys
+  "os" '(yas-insert-snippet :which-key "snippet"))
+
+(with-eval-after-load 'java-mode
+  (my/local-leader-keys
+    :keymaps '(java-mode-map)
+    "r"  '(my/java-run-project  :which-key "spring-boot:run")
+    "t"  '(my/java-test-project :which-key "mvn test")
+    "b"  '(eglot-code-actions   :which-key "code actions")))
+
+(with-eval-after-load 'java-ts-mode
+  (my/local-leader-keys
+    :keymaps '(java-ts-mode-map)
+    "r"  '(my/java-run-project  :which-key "spring-boot:run")
+    "t"  '(my/java-test-project :which-key "mvn test")
+    "b"  '(eglot-code-actions   :which-key "code actions")))
 
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; Dape — Debug Adapter Protocol (eglot-compatible)
@@ -1522,31 +1585,6 @@ Needed because the Emacs daemon may not have these in its environment."
       (pcase-dolist (`(,key . ,fn) screenshot-keys)
         (define-key map key fn)))))
 
-(with-eval-after-load 'ewm-input
-  ;; ewm-input loads before the Wayland socket exists; delay so WAYLAND_DISPLAY is set
-  (run-with-timer 1 nil #'my/start-cliphist-when-ready)
-
-  ;; Clipboard: C-x y y/d/w — единый стиль для ewm-окон
-  (define-key ewm-mode-map (kbd "C-x y y") #'my/cliphist-pick)
-  (define-key ewm-mode-map (kbd "C-x y d") #'my/cliphist-delete)
-  (define-key ewm-mode-map (kbd "C-x y w") #'my/cliphist-clear)
-
-  ;; Screenshots — те же функции что и в global-set-key выше
-  (define-key ewm-mode-map (kbd "<Print>")     #'my/screenshot-area-to-clipboard)
-  (define-key ewm-mode-map (kbd "s-<Print>")   #'my/screenshot-area-to-file)
-  (define-key ewm-mode-map (kbd "S-<Print>")   #'my/screenshot-full-to-clipboard)
-  (define-key ewm-mode-map (kbd "s-S-<Print>") #'my/screenshot-full-to-file)
-
-  ;; Window resize — зеркалим evil-normal-state биндинги для ewm-mode
-  (define-key ewm-mode-map (kbd "<C-up>")
-    (lambda () (interactive) (evil-window-increase-height 2)))
-  (define-key ewm-mode-map (kbd "<C-down>")
-    (lambda () (interactive) (evil-window-decrease-height 2)))
-  (define-key ewm-mode-map (kbd "<C-left>")
-    (lambda () (interactive) (evil-window-decrease-width 2)))
-  (define-key ewm-mode-map (kbd "<C-right>")
-    (lambda () (interactive) (evil-window-increase-width 2))))
-
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ;; org-download (вставка изображений из буфера обмена)
 ;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1562,86 +1600,6 @@ Needed because the Emacs daemon may not have these in its environment."
   (interactive)
   (require 'org-download)
   (org-download-clipboard))
-
-;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-;; Display output control via ewm-configure-output (native EWM API).
-;; wlr-randr reports outputs correctly but cannot change modes in EWM —
-;; use ewm-configure-output from ewm.el instead.
-;; Connector names auto-detected from ewm--output-info.
-;; IMPORTANT: enable external first, then disable built-in.
-;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-(defun my/ewm-connector (prefix)
-  "Return the first connector name from ewm--output-info starting with PREFIX."
-  (when (and (boundp 'ewm--output-info) ewm--output-info)
-    (car (seq-find (lambda (entry)
-                     (string-prefix-p prefix (car entry)))
-                   ewm--output-info))))
-
-(defun my/list-outputs ()
-  "Show all outputs EWM currently knows about."
-  (interactive)
-  (if (and (boundp 'ewm--output-info) ewm--output-info)
-      (message "EWM outputs: %s" (mapconcat #'car ewm--output-info ", "))
-    (message "ewm--output-info is empty — compositor not running?")))
-
-(defun my/enable-edp1 ()
-  "Enable built-in eDP display: restore backlight + ewm-configure-output."
-  (interactive)
-  (if-let ((conn (my/ewm-connector "eDP")))
-      (progn
-        (shell-command-to-string
-         "brightnessctl --restore --device=intel_backlight 2>/dev/null")
-        (ewm-configure-output conn :enabled t)
-        (message "eDP-1 enabled"))
-    (message "No eDP connector — M-x my/list-outputs")))
-
-(defun my/disable-edp1 ()
-  "Disable built-in eDP display: ewm-configure-output + backlight to 0."
-  (interactive)
-  (if-let ((conn (my/ewm-connector "eDP")))
-      (progn
-        (ewm-configure-output conn :enabled nil)
-        (shell-command-to-string
-         "brightnessctl --save --device=intel_backlight set 0 2>/dev/null")
-        (message "eDP-1 disabled"))
-    (message "No eDP connector — M-x my/list-outputs")))
-
-(defun my/enable-dp2 ()
-  "Enable external DP-2 display at 2560x1080@100Hz."
-  (interactive)
-  (if-let ((conn (my/ewm-connector "DP-2")))
-      (progn
-        (ewm-configure-output conn :width 2560 :height 1080 :refresh 100 :enabled t)
-        (message "%s enabled at 2560x1080@100Hz" conn))
-    (message "No DP-2 connector — M-x my/list-outputs")))
-
-(defun my/disable-dp2 ()
-  "Disable external DP-2 display."
-  (interactive)
-  (if-let ((conn (my/ewm-connector "DP-2")))
-      (progn
-        (ewm-configure-output conn :enabled nil)
-        (message "%s disabled" conn))
-    (message "No DP-2 connector — M-x my/list-outputs")))
-
-(defun my/enable-dp1 ()
-  "Enable external DP-1 display with preferred mode."
-  (interactive)
-  (if-let ((conn (my/ewm-connector "DP-1")))
-      (progn
-        (ewm-configure-output conn :enabled t)
-        (message "%s enabled" conn))
-    (message "No DP-1 connector — M-x my/list-outputs")))
-
-(defun my/disable-dp1 ()
-  "Disable external DP-1 display."
-  (interactive)
-  (if-let ((conn (my/ewm-connector "DP-1")))
-      (progn
-        (ewm-configure-output conn :enabled nil)
-        (message "%s disabled" conn))
-    (message "No DP-1 connector — M-x my/list-outputs")))
-
 
 (provide 'init)
 ;;; init.el ends here

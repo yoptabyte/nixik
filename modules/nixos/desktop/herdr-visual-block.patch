@@ -1,0 +1,350 @@
+diff --git a/src/api/schema/panes.rs b/src/api/schema/panes.rs
+index 6cbcaf4..3fe781e 100644
+--- a/src/api/schema/panes.rs
++++ b/src/api/schema/panes.rs
+@@ -259,10 +259,16 @@ pub struct PaneSelectionReadParams {
+     pub pane_id: String,
+     pub anchor: PaneTextPoint,
+     pub cursor: PaneTextPoint,
++    #[serde(default, skip_serializing_if = "is_false")]
++    pub rectangle: bool,
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub content_revision: Option<u64>,
+ }
+ 
++fn is_false(value: &bool) -> bool {
++    !value
++}
++
+ #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+ #[serde(rename_all = "snake_case")]
+ pub enum PaneCopyMotion {
+diff --git a/src/app/api/panes.rs b/src/app/api/panes.rs
+index a025f0b..e5d9b5e 100644
+--- a/src/app/api/panes.rs
++++ b/src/app/api/panes.rs
+@@ -232,11 +232,19 @@ impl App {
+         {
+             return Err(("stale_content", "pane content changed".to_owned()));
+         }
+-        let selection = crate::selection::Selection::absolute_range(
+-            pane_id,
+-            (params.anchor.row, params.anchor.col),
+-            (params.cursor.row, params.cursor.col),
+-        );
++        let selection = if params.rectangle {
++            crate::selection::Selection::absolute_rectangle(
++                pane_id,
++                (params.anchor.row, params.anchor.col),
++                (params.cursor.row, params.cursor.col),
++            )
++        } else {
++            crate::selection::Selection::absolute_range(
++                pane_id,
++                (params.anchor.row, params.anchor.col),
++                (params.cursor.row, params.cursor.col),
++            )
++        };
+         let Some(text) = runtime.extract_selection(&selection) else {
+             return Err((
+                 "selection_unavailable",
+@@ -2430,6 +2438,7 @@ mod tests {
+             pane_id: public_pane_id.clone(),
+             anchor: crate::api::schema::PaneTextPoint { row: 0, col: 0 },
+             cursor: crate::api::schema::PaneTextPoint { row: 0, col: 4 },
++            rectangle: false,
+             content_revision: Some(revision),
+         };
+         assert_eq!(
+diff --git a/src/app/custom_commands.rs b/src/app/custom_commands.rs
+index a224588..a29f919 100644
+--- a/src/app/custom_commands.rs
++++ b/src/app/custom_commands.rs
+@@ -719,6 +719,7 @@ mod tests {
+                     pane_id,
+                     anchor: crate::api::schema::PaneTextPoint { row: 0, col: 0 },
+                     cursor: crate::api::schema::PaneTextPoint { row: 0, col: 7 },
++                    rectangle: false,
+                     content_revision: Some(u64::MAX),
+                 }),
+             },
+diff --git a/src/client/shell/actions.rs b/src/client/shell/actions.rs
+index 12d8cc1..7f7c5df 100644
+--- a/src/client/shell/actions.rs
++++ b/src/client/shell/actions.rs
+@@ -228,6 +228,7 @@ impl ClientShellState {
+                                 row: cursor.0,
+                                 col: cursor.1,
+                             },
++                            rectangle: selection.is_rectangle(),
+                             content_revision: Some(content_revision),
+                         })
+                     })
+@@ -285,6 +286,7 @@ impl ClientShellState {
+                         row: cursor.0,
+                         col: cursor.1,
+                     },
++                    rectangle: selection.is_rectangle(),
+                     content_revision,
+                 },
+             ),
+diff --git a/src/client/shell/copy_mode.rs b/src/client/shell/copy_mode.rs
+index 07dc8d1..132214a 100644
+--- a/src/client/shell/copy_mode.rs
++++ b/src/client/shell/copy_mode.rs
+@@ -180,6 +180,11 @@ impl ClientShellState {
+         }
+ 
+         match (key.code, key.modifiers) {
++            (KeyCode::Char('v'), KeyModifiers::CONTROL) => {
++                self.begin_copy_selection(false, true);
++                outcome.repaint = true;
++                return;
++            }
+             (KeyCode::Char('b'), modifiers) if modifiers.contains(KeyModifiers::CONTROL) => {
+                 self.move_copy_page(-1, false, outcome);
+                 return;
+@@ -209,8 +214,8 @@ impl ClientShellState {
+                     self.exit_copy_mode(true, outcome);
+                 }
+             }
+-            'v' | ' ' => self.begin_copy_selection(false),
+-            'V' => self.begin_copy_selection(true),
++            'v' | ' ' => self.begin_copy_selection(false, false),
++            'V' => self.begin_copy_selection(true, false),
+             'h' => self.move_copy_cursor(0, -1, outcome),
+             'j' => self.move_copy_cursor(1, 0, outcome),
+             'k' => self.move_copy_cursor(-1, 0, outcome),
+@@ -646,7 +651,7 @@ impl ClientShellState {
+         }
+     }
+ 
+-    fn begin_copy_selection(&mut self, linewise: bool) {
++    fn begin_copy_selection(&mut self, linewise: bool, rectangle: bool) {
+         let end_col = self
+             .copy_hit()
+             .map_or(0, |hit| hit.inner_rect.width.saturating_sub(1));
+@@ -663,6 +668,15 @@ impl ClientShellState {
+                 copy_mode.cursor.row,
+                 end_col,
+             ));
++        } else if rectangle {
++            copy_mode.selection = Some(ClientCopySelection::Block {
++                anchor: copy_mode.cursor,
++            });
++            self.selection = Some(crate::selection::Selection::absolute_rectangle(
++                copy_mode.pane_id.clone(),
++                (copy_mode.cursor.row, copy_mode.cursor.col),
++                (copy_mode.cursor.row, copy_mode.cursor.col),
++            ));
+         } else {
+             copy_mode.selection = Some(ClientCopySelection::Character {
+                 anchor: copy_mode.cursor,
+@@ -698,6 +712,13 @@ impl ClientShellState {
+                         .map_or(0, |hit| hit.inner_rect.width.saturating_sub(1)),
+                 )
+             }
++            ClientCopySelection::Block { anchor } => {
++                crate::selection::Selection::absolute_rectangle(
++                    copy_mode.pane_id.clone(),
++                    (anchor.row, anchor.col),
++                    (copy_mode.cursor.row, copy_mode.cursor.col),
++                )
++            }
+         });
+     }
+ 
+diff --git a/src/client/shell/state.rs b/src/client/shell/state.rs
+index 901c5a2..a82df37 100644
+--- a/src/client/shell/state.rs
++++ b/src/client/shell/state.rs
+@@ -786,6 +786,9 @@ pub(super) enum ClientCopySelection {
+     Linewise {
+         anchor_row: u32,
+     },
++    Block {
++        anchor: crate::api::schema::PaneTextPoint,
++    },
+ }
+ 
+ #[derive(Clone, Debug, PartialEq, Eq)]
+diff --git a/src/client/shell/tests/keybindings_settings.rs b/src/client/shell/tests/keybindings_settings.rs
+index e1b43a0..2337782 100644
+--- a/src/client/shell/tests/keybindings_settings.rs
++++ b/src/client/shell/tests/keybindings_settings.rs
+@@ -487,6 +487,7 @@ fn plugin_command_carries_client_owned_selection_coordinates() {
+             pane_id: "pane_1".into(),
+             anchor: crate::api::schema::PaneTextPoint { row: 2, col: 3 },
+             cursor: crate::api::schema::PaneTextPoint { row: 4, col: 5 },
++            rectangle: false,
+             content_revision: Some(42),
+         })
+     );
+diff --git a/src/client/shell/word_selection.rs b/src/client/shell/word_selection.rs
+index f4329ce..72ac83a 100644
+--- a/src/client/shell/word_selection.rs
++++ b/src/client/shell/word_selection.rs
+@@ -75,6 +75,7 @@ impl ClientShellState {
+                 row,
+                 col: gesture.end_col,
+             },
++            rectangle: false,
+             content_revision: gesture.content_revision,
+         };
+         if !self.push_endpoint_method_with_kind(
+diff --git a/src/pane/terminal.rs b/src/pane/terminal.rs
+index 4a6bc17..4dc9f7c 100644
+--- a/src/pane/terminal.rs
++++ b/src/pane/terminal.rs
+@@ -3008,8 +3008,11 @@ fn ghostty_extract_selection(
+     selection: &crate::selection::Selection,
+ ) -> Result<String, crate::ghostty::Error> {
+     let ((start_row, start_col), (end_row, end_col)) = selection.ordered_cells();
+-    core.terminal
+-        .read_text_screen((start_col, start_row), (end_col, end_row), false)
++    core.terminal.read_text_screen(
++        (start_col, start_row),
++        (end_col, end_row),
++        selection.is_rectangle(),
++    )
+ }
+ 
+ fn ghostty_screen_row(
+diff --git a/src/selection.rs b/src/selection.rs
+index 5f81fdc..df0887b 100644
+--- a/src/selection.rs
++++ b/src/selection.rs
+@@ -39,6 +39,8 @@ pub struct Selection<P = PaneId> {
+     anchor: (u32, u16),
+     /// Current/final position in screen-buffer coordinates (row, col).
+     cursor: (u32, u16),
++    /// Whether the selected cells form a rectangular block.
++    rectangle: bool,
+     /// Selection phase.
+     phase: Phase,
+ }
+@@ -52,6 +54,7 @@ impl<P> Selection<P> {
+             pane_id,
+             anchor,
+             cursor: anchor,
++            rectangle: false,
+             phase: Phase::Anchored,
+         }
+     }
+@@ -61,6 +64,7 @@ impl<P> Selection<P> {
+             pane_id,
+             anchor,
+             cursor: anchor,
++            rectangle: false,
+             phase: Phase::Anchored,
+         }
+     }
+@@ -70,6 +74,7 @@ impl<P> Selection<P> {
+             pane_id,
+             anchor,
+             cursor,
++            rectangle: false,
+             phase: Phase::Dragging,
+         }
+     }
+@@ -84,6 +89,21 @@ impl<P> Selection<P> {
+             pane_id,
+             anchor: (anchor_row, anchor_col),
+             cursor: (cursor_row, cursor_col),
++            rectangle: false,
++            phase: Phase::Dragging,
++        }
++    }
++
++    pub(crate) fn absolute_rectangle(
++        pane_id: P,
++        anchor: (u32, u16),
++        cursor: (u32, u16),
++    ) -> Self {
++        Self {
++            pane_id,
++            anchor,
++            cursor,
++            rectangle: true,
+             phase: Phase::Dragging,
+         }
+     }
+@@ -177,6 +197,9 @@ impl<P> Selection<P> {
+     fn ordered(&self) -> ((u32, u16), (u32, u16)) {
+         let (ar, ac) = self.anchor;
+         let (cr, cc) = self.cursor;
++        if self.rectangle {
++            return ((ar.min(cr), ac.min(cc)), (ar.max(cr), ac.max(cc)));
++        }
+         if ar < cr || (ar == cr && ac <= cc) {
+             ((ar, ac), (cr, cc))
+         } else {
+@@ -188,6 +211,10 @@ impl<P> Selection<P> {
+         self.ordered()
+     }
+ 
++    pub(crate) fn is_rectangle(&self) -> bool {
++        self.rectangle
++    }
++
+     pub(crate) fn visible_rects(&self, inner: Rect, metrics: Option<ScrollMetrics>) -> [Rect; 3] {
+         let mut rects = [Rect::default(); 3];
+         if !self.is_visible() || inner.is_empty() {
+@@ -212,7 +239,14 @@ impl<P> Selection<P> {
+                 )
+             }
+         };
+-        if start_row == end_row {
++        if self.rectangle {
++            rects[0] = rect(
++                start_row,
++                end_row.saturating_add(1),
++                start_col,
++                end_col.saturating_add(1),
++            );
++        } else if start_row == end_row {
+             rects[0] = rect(
+                 start_row,
+                 start_row.saturating_add(1),
+@@ -247,7 +281,9 @@ impl<P> Selection<P> {
+         if row < sr || row > er {
+             return false;
+         }
+-        if sr == er {
++        if self.rectangle {
++            col >= sc && col <= ec
++        } else if sr == er {
+             col >= sc && col <= ec
+         } else if row == sr {
+             col >= sc
+@@ -540,6 +576,30 @@ mod tests {
+         assert!(sel.contains(4, 10, None));
+         assert!(!sel.contains(4, 11, None));
+     }
++    #[test]
++    fn rectangle_contains_only_the_selected_columns() {
++        let selection = Selection::absolute_rectangle((), (2, 5), (4, 10));
++        for row in 2..=4 {
++            assert!(selection.contains(row, 5, None));
++            assert!(selection.contains(row, 10, None));
++            assert!(!selection.contains(row, 4, None));
++            assert!(!selection.contains(row, 11, None));
++        }
++        assert!(!selection.contains(1, 5, None));
++        assert!(!selection.contains(5, 5, None));
++    }
++    #[test]
++    fn rectangle_normalizes_every_drag_direction() {
++        for (anchor, cursor) in [
++            ((2, 5), (4, 10)),
++            ((2, 10), (4, 5)),
++            ((4, 5), (2, 10)),
++            ((4, 10), (2, 5)),
++        ] {
++            let selection = Selection::absolute_rectangle((), anchor, cursor);
++            assert_eq!(selection.ordered_cells(), ((2, 5), (4, 10)));
++        }
++    }
+ 
+     #[test]
+     fn anchored_not_visible() {

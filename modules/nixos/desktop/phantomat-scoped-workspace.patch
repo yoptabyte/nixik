@@ -1,0 +1,212 @@
+diff --git a/Config.cpp b/Config.cpp
+index a0c0da9..46aa749 100644
+--- a/Config.cpp
++++ b/Config.cpp
+@@ -49,10 +49,10 @@ SDispatcher* findDispatcher(const std::string_view name) {
+     static SDispatcher registrations[] = {
+         {
+             .name            = "overview",
+-            .argPattern      = std::regex{R"(^(select|(toggle|on|open|enable|off|close|disable)([ \t]+(all|[^ \t"\\]+))?)$)"},
++            .argPattern      = std::regex{R"(^(scope|select|(toggle|on|open|enable|off|close|disable)([ \t]+(all|[^ \t"\\]+))?)$)"},
+             .defaultArg      = "toggle",
+             .typeArgError    = "expected an optional string argument; did you forget quotes around it?",
+-            .invalidArgError = "expected select or toggle/open/close [monitor|all] (aliases: on, enable, off, disable)",
++            .invalidArgError = "expected scope, select or toggle/open/close [monitor|all] (aliases: on, enable, off, disable)",
+             .luaFunction     = [](lua_State* L) { return dispatcherFactoryLua(L, "overview"); },
+         },
+         {
+@@ -351,7 +351,7 @@ static void registerConfigValues() {
+     HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
+                                   makeShared<CBoolValue>("plugin:spatialoverview:canvas:desktop_mode", "render one shared window canvas instead of workspace cards", false));
+     HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
+-                                  makeShared<CBoolValue>("plugin:spatialoverview:canvas:persistent", "keep the canvas renderer active at normal zoom", false));
++                                  makeShared<CBoolValue>("plugin:spatialoverview:canvas:persistent", "keep the canvas renderer active at normal zoom", true));
+     HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
+                                   makeShared<CBoolValue>("plugin:spatialoverview:canvas:linked_screens", "screens show adjacent parts of the canvas and move together, like one wide desk", true));
+     HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
+@@ -528,7 +528,7 @@ static void registerConfigValues() {
+     HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
+                                   makeShared<CStringValue>("plugin:spatialoverview:navigator:mono_font", "HUD readout font", Hyprlang::STRING{"JetBrainsMono Nerd Font"}));
+     HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
+-                                  makeShared<CBoolValue>("plugin:spatialoverview:canvas:remember_layout", "remember where windows live across restarts and reopenings", false));
++                                  makeShared<CBoolValue>("plugin:spatialoverview:canvas:remember_layout", "remember where windows live across restarts and reopenings", true));
+ 
+     SpatialOverview::Tuning::registerConfig();
+ }
+diff --git a/Memory.cpp b/Memory.cpp
+index 1079260..884f0c5 100644
+--- a/Memory.cpp
++++ b/Memory.cpp
+@@ -1,6 +1,7 @@
+ #define WLR_USE_UNSTABLE
+ 
+ #include "Memory.hpp"
++#include "scrollOverview.hpp"
+ 
+ #include <algorithm>
+ #include <cmath>
+@@ -12,6 +13,7 @@
+ #include <sstream>
+ 
+ #include <hyprland/src/desktop/state/WindowState.hpp>
++#include <hyprland/src/desktop/Workspace.hpp>
+ #include <hyprland/src/desktop/view/Window.hpp>
+ 
+ #include "Navigator.hpp"
+@@ -85,6 +87,8 @@ namespace SpatialOverview::Memory {
+             base = state;
+         else
+             base = std::filesystem::path{std::getenv("HOME") ? std::getenv("HOME") : "/tmp"} / ".local" / "state";
++        if (const auto WORKSPACE = canvasWorkspaceScope())
++            return (base / "spatial-overview" / ("canvas-memory-ws" + std::to_string(WORKSPACE->m_id) + ".tsv")).string();
+         return (base / "spatial-overview" / "canvas-memory.tsv").string();
+     }
+ 
+diff --git a/Navigator.cpp b/Navigator.cpp
+index a5cb2c0..25b0396 100644
+--- a/Navigator.cpp
++++ b/Navigator.cpp
+@@ -1,6 +1,7 @@
+ #define WLR_USE_UNSTABLE
+ 
+ #include "Navigator.hpp"
++#include "scrollOverview.hpp"
+ #include "Tuning.hpp"
+ 
+ #include <algorithm>
+@@ -84,6 +85,8 @@ namespace SpatialOverview::Navigator {
+         bool isCandidate(const PHLWINDOW& window) {
+             if (!Desktop::View::validMapped(window))
+                 return false;
++            if (const auto SCOPE = canvasWorkspaceScope(); SCOPE && window->m_workspace != SCOPE)
++                return false;
+             if (window->m_workspace && window->m_workspace->m_isSpecialWorkspace)
+                 return false;
+             if (window->m_pinned)
+diff --git a/main.cpp b/main.cpp
+index 54bcf2e..fe28cc6 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -463,6 +463,20 @@ bool canvasTogglePin(PHLWINDOW window);
+ static SDispatchResult onOverviewDispatcher(std::string arg) {
+     const auto [ACTION, TARGET] = splitOverviewArg(arg);
+ 
++    if (ACTION == "scope") {
++        const auto MONITOR = Desktop::focusState()->monitor();
++        if (!MONITOR || !MONITOR->m_activeWorkspace || MONITOR->m_activeWorkspace->m_isSpecialWorkspace)
++            return {.success = false, .error = "no regular active workspace"};
++        if (scrollOverviewForMonitor(MONITOR))
++            return {.success = false, .error = "overview already open"};
++        setCanvasWorkspaceScope(MONITOR->m_activeWorkspace);
++        if (!openOverview(MONITOR)) {
++            setCanvasWorkspaceScope(nullptr);
++            return {.success = false, .error = "failed enabling scoped canvas"};
++        }
++        return {};
++    }
++
+     if (ACTION == "select") {
+         const auto OVERVIEW = scrollOverviewAt(g_pInputManager->getMouseCoordsInternal());
+         if (OVERVIEW && OVERVIEW->m_isSwiping)
+@@ -966,6 +980,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
+     g_pHyprRenderer->m_renderPass.removeAllOfType("CScrollOverviewPassElement");
+ 
+     g_unloading = true;
++    flushCanvasMemory();
+     if (g_stateCommand)
+         HyprlandAPI::unregisterHyprCtlCommand(SCROLLOVERVIEW_HANDLE, g_stateCommand);
+     g_stateCommand.reset();
+diff --git a/scrollOverview.cpp b/scrollOverview.cpp
+index fe0b99c..95d4044 100644
+--- a/scrollOverview.cpp
++++ b/scrollOverview.cpp
+@@ -98,6 +98,15 @@ static std::unordered_set<const void*> g_canvasManagedTargets;
+ static PHLMONITORREF                g_canvasKeyboardNavigationMonitor;
+ static PHLMONITORREF                g_canvasActiveCameraMonitor;
+ static int                          g_canvasInternalFocusDepth = 0;
++static PHLWORKSPACEREF              g_canvasWorkspaceScope;
++
++void setCanvasWorkspaceScope(PHLWORKSPACE workspace) {
++    g_canvasWorkspaceScope = workspace;
++}
++
++PHLWORKSPACE canvasWorkspaceScope() {
++    return g_canvasWorkspaceScope.lock();
++}
+ // Native and spatial geometry are distinct, session-scoped representations.
+ // Weak references prevent a closed client from being resurrected by restore.
+ struct SCanvasSavedWindow {
+@@ -456,6 +465,9 @@ static bool shouldShowOverviewWindow(const PHLWINDOW& window) {
+     if (!validMapped(WINDOW))
+         return false;
+ 
++    if (const auto SCOPE = canvasWorkspaceScope(); SCOPE && WINDOW->m_workspace != SCOPE)
++        return false;
++
+     if (WINDOW->m_workspace && WINDOW->m_workspace->m_isSpecialWorkspace)
+         return false;
+ 
+@@ -2845,7 +2857,8 @@ void CScrollOverview::rebuildWorkspaceImages() {
+ 
+     for (const auto& w : State::workspaceState()->workspaces()) {
+         const auto WORKSPACE = w.lock();
+-        if (!valid(WORKSPACE) || (!isCanvasDesktop() && WORKSPACE->m_monitor != pMonitor) || WORKSPACE->m_isSpecialWorkspace)
++        if (!valid(WORKSPACE) || (!isCanvasDesktop() && WORKSPACE->m_monitor != pMonitor) || WORKSPACE->m_isSpecialWorkspace ||
++            (canvasWorkspaceScope() && WORKSPACE != canvasWorkspaceScope()))
+             continue;
+ 
+         if (WORKSPACE == REMOVEDWORKSPACE)
+@@ -3431,7 +3444,8 @@ PHLWORKSPACE CScrollOverview::workspaceAtOverviewCursor(size_t* hoveredWorkspace
+ }
+ 
+ bool CScrollOverview::isCanvasDesktop() const {
+-    return ScrollOverview::Config::getCanvasEnabled() && ScrollOverview::Config::getCanvasDesktopMode() && layout == ScrollOverview::Config::ELayout::GRID;
++    return ScrollOverview::Config::getCanvasEnabled() && (ScrollOverview::Config::getCanvasDesktopMode() || canvasWorkspaceScope()) &&
++           layout == ScrollOverview::Config::ELayout::GRID;
+ }
+ 
+ bool CScrollOverview::isPersistentCanvas() const {
+@@ -3867,6 +3881,8 @@ static void canvasFullscreenStepAside(const PHLWINDOW& window, const PHLMONITOR&
+     auto* canvas = canvasOf(scrollOverviewForMonitor(monitor));
+     if (!canvas || !canvas->isCanvasDesktop() || canvas->isClosing())
+         return;
++    if (const auto SCOPE = canvasWorkspaceScope(); SCOPE && monitor->m_activeWorkspace != SCOPE)
++        return;
+ 
+     g_canvasFullscreenApplying = true;
+     // It grows out of where the canvas drew it (zoomed out or not), not out of
+@@ -8865,7 +8881,7 @@ void CScrollOverview::followLinkedCamera() {
+ // canvas, so it goes back exactly where it was.
+ void CScrollOverview::syncCanvasWindowScreens() {
+     const auto MONITOR = pMonitor.lock();
+-    if (!MONITOR || !isCanvasDesktop() || closing || canvasNavigationActive || !canvasAtRestZoom() || viewOffset->isBeingAnimated() || scale->isBeingAnimated() ||
++    if (!MONITOR || canvasWorkspaceScope() || !isCanvasDesktop() || closing || canvasNavigationActive || !canvasAtRestZoom() || viewOffset->isBeingAnimated() || scale->isBeingAnimated() ||
+         dragActiveWindow || g_pointerGrabOverview || !MONITOR->m_activeWorkspace || MONITOR->m_activeWorkspace->m_isSpecialWorkspace)
+         return;
+     const auto SCREEN = MONITOR->logicalBox();
+@@ -9459,6 +9475,10 @@ static int saveCanvasMemory(void*) {
+     return 0;
+ }
+ 
++void flushCanvasMemory() {
++    saveCanvasMemory(nullptr);
++}
++
+ void disarmCanvasTimers() {
+     disarmCanvasSwitcher();
+     if (g_popupFadeTimer)
+diff --git a/scrollOverview.hpp b/scrollOverview.hpp
+index ae83b97..ff86cd7 100644
+--- a/scrollOverview.hpp
++++ b/scrollOverview.hpp
+@@ -24,6 +24,10 @@
+ class CMonitor;
+ struct wl_event_source;
+ 
++void setCanvasWorkspaceScope(PHLWORKSPACE workspace);
++PHLWORKSPACE canvasWorkspaceScope();
++void flushCanvasMemory();
++
+ class CScrollOverview : public IOverview {
+   public:
+     CScrollOverview(PHLWORKSPACE startedOn_, bool swipe = false, PHLMONITOR monitor = {});

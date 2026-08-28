@@ -1,0 +1,25 @@
+state_file = "auto"
+
+[hotkey]
+enabled = false
+
+[audio]
+device = "default"
+pause_media = true
+
+[whisper]
+# Multilingual model: dictation works with both Russian and English.
+model = "base"
+language = "auto"
+
+[output]
+mode = "type"
+fallback_to_clipboard = true
+
+[output.notification]
+on_recording_start = true
+on_recording_stop = true
+
+[osd]
+# The packaged Voxtype does not include a working OSD frontend.
+enabled = false

@@ -1,0 +1,94 @@
+{
+  "exclusive": true,
+  "reload_style_on_change": true,
+  "layer": "top",
+  "position": "top",
+  "height": 28,
+  "width": 800,
+  "margin-top": 1,
+  "spacing": 0,
+
+  "modules-left": ["custom/nixos", "hyprland/workspaces", "mpris"],
+  "modules-center": ["clock"],
+  "modules-right": ["tray", "network", "pulseaudio", "cpu", "battery"],
+
+  "custom/nixos": {
+    "format": "",
+    "tooltip": true,
+    "tooltip-format": "NixOS",
+    "on-click": "dmenu_run"
+  },
+
+  "hyprland/workspaces": {
+    "format": "{icon}",
+    "format-icons": {
+      "1": "1", "2": "2", "3": "3", "4": "4", "5": "5",
+      "6": "6", "7": "7", "8": "8", "9": "9"
+    },
+    "persistent-workspaces": { "1": [], "2": [], "3": [], "4": [], "5": [] }
+  },
+
+  "mpris": {
+    "format": "{player_icon} {title}",
+    "format-paused": "<span color='#928374'>{status_icon} {artist}</span>",
+    "max-length": 30,
+    "interval": 1,
+    "player-icons": { "default": "󰎈", "mpv": "󰎈" },
+    "status-icons": { "paused": "󰏤" },
+    "ignored-players": ["firefox", "chromium", "brave"]
+  },
+
+  "clock": {
+    "format": "{:%a %d/%m %R}",
+    "format-alt": "{:%d %B W%V %Y}",
+    "tooltip-format": "<span>{calendar}</span>",
+    "calendar": {
+      "mode": "month",
+      "mode-mon-col": 3,
+      "on-click-right": "mode",
+      "format": {
+        "month": "<span color='#3c3836'><b>{}</b></span>",
+        "weekdays": "<span color='#458588'><b>{}</b></span>",
+        "today": "<span color='#98971a'><b>{}</b></span>"
+      }
+    }
+  },
+
+  "tray": { "icon-size": 14, "spacing": 10 },
+
+  "network": {
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "format-wifi": "{icon}",
+    "format-ethernet": "󰈀",
+    "format-disconnected": "󰤮",
+    "tooltip-format-wifi": "{essid} ({frequency} GHz)\n⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
+    "tooltip-format-ethernet": "⇣{bandwidthDownBytes}  ⇡{bandwidthUpBytes}",
+    "tooltip-format-disconnected": "Disconnected",
+    "interval": 3
+  },
+
+  "pulseaudio": {
+    "format": "{icon}",
+    "format-muted": "󰝟",
+    "format-icons": { "default": ["", "", ""] },
+    "tooltip-format": "Playing at {volume}%",
+    "scroll-step": 5,
+    "on-click": "pavucontrol"
+  },
+
+  "cpu": { "interval": 2, "format": "{usage}% 󰍛", "tooltip": true },
+
+  "battery": {
+    "format": "{icon} {capacity}%",
+    "format-charging": "{icon} {capacity}%",
+    "format-plugged": " {capacity}%",
+    "format-icons": {
+      "charging": ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
+      "default": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+    },
+    "tooltip-format-discharging": "{power:>1.0f}W↓ {capacity}%",
+    "tooltip-format-charging": "{power:>1.0f}W↑ {capacity}%",
+    "interval": 5,
+    "states": { "warning": 20, "critical": 10 }
+  }
+}

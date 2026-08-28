@@ -1,0 +1,82 @@
+onboarding = false
+
+# Mirrors the existing tmux muscle memory: Ctrl+B prefix, Vi-style pane keys,
+# Alt+arrows for focus and Alt+digits for windows/tabs.
+[theme]
+name = "gruvbox-light"
+
+[theme.custom]
+accent = "#98971a"
+panel_bg = "#fbf1c7"
+text = "#3c3836"
+
+[terminal]
+new_cwd = "follow"
+
+[keys]
+prefix = "ctrl+b"
+# Copy mode: Ctrl+B, [ opens it; Ctrl+V starts a Vim-style rectangular selection.
+# Move with h/j/k/l, then y or Enter copies the selected columns.
+reload_config = ["prefix+shift+r", "alt+r"]
+detach = ["prefix+d", "alt+d"]
+goto = "alt+t"
+new_workspace = "alt+s"
+close_workspace = "alt+x"
+copy_mode = "prefix+["
+split_vertical = ["prefix+v", "alt+v"]
+split_horizontal = ["prefix+shift+v", "alt+h"]
+close_pane = ["prefix+x", "alt+c"]
+zoom = "prefix+z"
+focus_pane_left = ["prefix+h", "alt+left"]
+focus_pane_down = ["prefix+j", "alt+down"]
+focus_pane_up = ["prefix+k", "alt+up"]
+focus_pane_right = ["prefix+l", "alt+right"]
+resize_pane_left = "alt+shift+left"
+resize_pane_down = "alt+shift+down"
+resize_pane_up = "alt+shift+up"
+resize_pane_right = "alt+shift+right"
+new_tab = ["prefix+c", "alt+enter"]
+close_tab = "alt+q"
+switch_tab = ["prefix+1..9", "alt+1..9"]
+
+[ui]
+tab_bar_position = "bottom"
+tab_bar_right = [{ type = "zoom" }, { type = "hostname" }, { type = "datetime", format = "%H:%M" }]
+pane_gaps = false
+pane_outer_borders = false
+pane_scrollbars = false
+mouse_capture = true
+confirm_close = true
+prompt_new_tab_name = false
+
+[[keys.command]]
+key = "prefix+alt+g"
+type = "popup"
+command = "lazygit"
+description = "Lazygit"
+width = "80%"
+height = "80%"
+
+[[keys.command]]
+key = "prefix+alt+y"
+type = "popup"
+command = "claude"
+description = "Claude Code"
+width = "80%"
+height = "80%"
+
+[[keys.command]]
+key = "prefix+alt+o"
+type = "popup"
+command = "opencode"
+description = "OpenCode"
+width = "80%"
+height = "80%"
+
+[[keys.command]]
+key = "prefix+alt+x"
+type = "popup"
+command = "codex"
+description = "Codex"
+width = "80%"
+height = "80%"
