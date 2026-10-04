@@ -1,5 +1,6 @@
 import XMonad hiding (resizeWindow)
-import XMonad.Hooks.DynamicLog
+import XMonad.Hooks.StatusBar
+import XMonad.Hooks.StatusBar.PP
 import XMonad.Hooks.EwmhDesktops
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.ManageHelpers
@@ -15,48 +16,46 @@ import XMonad.Layout.Tabbed (tabbed, shrinkText, Theme(..))
 import XMonad.Layout.ToggleLayouts (toggleLayouts, ToggleLayout(..))
 import XMonad.Layout.ResizableTile (MirrorResize(..))
 import XMonad.Util.EZConfig (additionalKeysP)
-import XMonad.Util.Run (spawnPipe)
 import XMonad.Util.Types (Direction2D(..))
 
 import qualified Data.Map as M
 import qualified XMonad.StackSet as W
 
 import System.Exit (exitSuccess)
-import System.IO
 
 main :: IO ()
-main = do
-  xmproc <- spawnPipe "bash -lc 'pkill -x xmobar >/dev/null 2>&1 || true; exec xmobar /home/yoptabyte/.config/xmobar/xmobarrc'"
-  xmonad $ docks $ ewmh $ def
+main = xmonad $ withSB (statusBarProp "exec /home/yoptabyte/.local/bin/xmonad-session" (pure myPP)) $ docks $ ewmh $ def
     { modMask            = mod4Mask
     , terminal           = "st"
     , borderWidth        = 2
-    , normalBorderColor  = "#c9cbd1"
-    , focusedBorderColor = "#cc6d00"
+    , normalBorderColor  = "#bdae93"
+    , focusedBorderColor = "#98971a"
     , workspaces         = map show [1..10]
     , layoutHook         = myLayout
     , manageHook         = myManageHook
-    , logHook            = dynamicLogWithPP xmobarPP
-                            { ppOutput = hPutStrLn xmproc
-                            , ppTitle  = const ""
-                            , ppCurrent = xmobarColor "#cc6d00" "" . wrap "[" "]"
-                            , ppVisible = xmobarColor "#716e61" ""
-                            , ppHidden  = xmobarColor "#716e61" ""
-                            , ppHiddenNoWindows = xmobarColor "#8a8980" ""
-                            , ppUrgent  = xmobarColor "#c84053" "" . wrap "!" "!"
-                            , ppLayout  = xmobarColor "#597b75" "" . layoutName
-                            , ppSep     = "<fc=#8a8980> | </fc>"
-                            , ppOrder   = \(ws:l:t:ex) -> [ws, l]
-                            }
     , startupHook        = myStartupHook
     } `additionalKeysP` myKeys
 
+-- Property logging survives a bar restart without blocking XMonad.
+myPP :: PP
+myPP = xmobarPP
+  { ppTitle  = xmobarColor "#545464" "" . shorten 80
+  , ppCurrent = xmobarColor "#cc6d00" "" . wrap "[" "]"
+  , ppVisible = xmobarColor "#716e61" ""
+  , ppHidden  = xmobarColor "#716e61" ""
+  , ppHiddenNoWindows = xmobarColor "#8a8980" ""
+  , ppUrgent  = xmobarColor "#c84053" "" . wrap "!" "!"
+  , ppLayout  = xmobarColor "#597b75" "" . layoutName
+  , ppSep     = "<fc=#8a8980> | </fc>"
+  , ppOrder   = \(ws:l:t:_) -> [ws, l, t]
+  }
+
 myTabTheme :: Theme
 myTabTheme = def
-  { activeColor      = "#cc6d00"
-  , inactiveColor    = "#c9cbd1"
-  , activeBorderColor  = "#cc6d00"
-  , inactiveBorderColor = "#c9cbd1"
+  { activeColor      = "#98971a"
+  , inactiveColor    = "#bdae93"
+  , activeBorderColor  = "#98971a"
+  , inactiveBorderColor = "#bdae93"
   , activeTextColor  = "#f2ecbc"
   , inactiveTextColor = "#716e61"
   }
@@ -82,12 +81,8 @@ toggleFloating :: Window -> X ()
 toggleFloating w = do
   ws <- gets windowset
   if M.member w (W.floating ws)
-    then do
-      windows $ W.sink w
-      refresh
-    else do
-      windows $ W.float w (W.RationalRect 0.1 0.1 0.8 0.8)
-      windows $ W.focusWindow w
+    then windows $ W.sink w
+    else windows $ W.focusWindow w . W.float w (W.RationalRect 0.1 0.1 0.8 0.8)
 
 resizeWindow :: Direction2D -> X ()
 resizeWindow dir =
@@ -114,10 +109,6 @@ myManageHook = composeOne
 myStartupHook = do
   spawn "systemctl --user unset-environment WAYLAND_DISPLAY && systemctl --user import-environment DISPLAY && systemctl --user start emacs-x11.service"
   spawn "xrdb -merge ~/.Xresources"
-  spawn "pkill -x trayer >/dev/null 2>&1 || true"
-  spawn "pkill -x snixembed >/dev/null 2>&1 || true"
-  spawn "trayer --edge bottom --align right --widthtype request --width 1 --height 22 --SetDockType true --SetPartialStrut true --transparent true --alpha 0 --tint 0x282828 --expand false --padding 2 --iconspacing 2 --monitor primary"
-  spawn "snixembed"
 
 myKeys =
   [ ("M-Return",        spawn "st")

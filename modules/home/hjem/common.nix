@@ -6,11 +6,20 @@
     users.yoptabyte = {
       enable = true;
       files = {
+        ".config/gtk-3.0/settings.ini".text = ''
+          [Settings]
+          gtk-font-name=ComicTrueMono Nerd Font Mono 11
+        '';
+        ".config/gtk-4.0/settings.ini".text = ''
+          [Settings]
+          gtk-font-name=ComicTrueMono Nerd Font Mono 11
+        '';
         ".config/git/config".source = ../files/git/git-config;
         ".config/jj/config.toml".source = ../files/jj/jj-config.toml;
         ".config/ghostty/config".source = ../files/ghostty/ghostty-config;
         ".config/starship.toml".source = ../files/starship/starship.toml;
         ".config/helix/config.toml".source = ../files/helix/helix-config.toml;
+        ".config/helix/themes/kanagawa_lotus.toml".source = ../files/helix/kanagawa_lotus.toml;
         ".config/zed/settings.json".source = ../files/zed/zed-settings.json;
         ".config/yazi/yazi.toml".source = ../files/yazi/yazi.toml;
         ".config/yazi/keymap.toml".source = ../files/yazi/yazi-keymap.toml;

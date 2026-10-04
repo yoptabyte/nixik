@@ -95,6 +95,8 @@
       { mode = "n"; key = "<leader>e"; action = ":Neotree toggle position=float<CR>"; options = { desc = "Toggle floating file explorer"; }; }
       { mode = "n"; key = "<leader>o"; action = ":Neotree focus<CR>";  options = { desc = "Focus file explorer"; }; }
       # Git
+      { mode = "n"; key = "<leader>gb"; action = "<cmd>GitLensShow<CR>"; options = { desc = "Git line blame"; }; }
+      { mode = "n"; key = "<leader>gD"; action = "<cmd>GitLensShowDiff<CR>"; options = { desc = "Git blame commit diff"; }; }
       { mode = "n"; key = "<leader>gg"; action = ":LazyGit<CR>";                                        options = { desc = "LazyGit"; }; }
       { mode = "n"; key = "<leader>gj"; action = ":lua require('gitsigns').next_hunk()<CR>";             options = { desc = "Next git hunk"; }; }
       { mode = "n"; key = "<leader>gk"; action = ":lua require('gitsigns').prev_hunk()<CR>";             options = { desc = "Previous git hunk"; }; }
@@ -125,12 +127,38 @@
       { mode = "v"; key = "<leader>m"; action = "<cmd>MCstart<CR>"; options = { desc = "Multi-cursor: start (selection)"; }; }
       # Zen mode
       { mode = "n"; key = "<leader>z"; action = "<cmd>ZenMode<CR>"; options = { desc = "Toggle zen mode"; }; }
+      # Markdown
+      { mode = "n"; key = "<leader>um"; action = "<cmd>RenderMarkdown toggle<CR>"; options = { desc = "Toggle Markdown rendering"; }; }
       # Zoom
       { mode = "n"; key = "<C-=>"; action = ":ZoomIn<CR>";  options = { desc = "Zoom in"; }; }
       { mode = "n"; key = "<C-->"; action = ":ZoomOut<CR>"; options = { desc = "Zoom out"; }; }
     ];
 
     plugins = {
+      orgmode = {
+        enable = true;
+        settings = {
+          org_agenda_files = "~/orgfiles/**/*.org";
+          org_default_notes_file = "~/orgfiles/refile.org";
+        };
+      };
+
+      render-markdown.enable = true;
+
+      smear-cursor = {
+        enable = true;
+        # Upstream's "Faster smear" preset.
+        settings = {
+          stiffness = 0.8;
+          trailing_stiffness = 0.6;
+          stiffness_insert_mode = 0.7;
+          trailing_stiffness_insert_mode = 0.7;
+          damping = 0.95;
+          damping_insert_mode = 0.95;
+          distance_stop_animating = 0.5;
+        };
+      };
+
       telescope = {
         enable = true;
         extensions = {
@@ -528,9 +556,15 @@
       vim-sleuth
       hydra-nvim
       multicursors-nvim
+      (pkgs.callPackage ../../packages/gitlens-nvim.nix { })
     ];
 
     extraConfigLua = ''
+      require("gitlens").setup({ auto_show = true, auto_show_delay = 1000 })
+
+      -- Ensure Org capture has a writable destination on first use.
+      vim.fn.mkdir(vim.fn.expand("~/orgfiles"), "p")
+
       -- Gruvbox Light (standard/medium contrast)
       vim.o.background = "light"
       vim.g.gruvbox_contrast_light = "medium"
@@ -567,9 +601,10 @@
       vim.api.nvim_create_autocmd("ColorScheme", { callback = set_transparent_background })
 
       -- Per-window zoom
-      local font_name   = "ZedMono Nerd Font"
+      local font_name   = "ComicTrueMono Nerd Font Mono"
       local font_sizes  = { code = 14, neotree = 11 }
       local function set_font(size) vim.o.guifont = font_name .. ":h" .. size end
+      set_font(font_sizes.code)
       local function is_neotree()   return vim.bo.filetype == "neo-tree" end
       vim.api.nvim_create_user_command("ZoomIn",  function()
         if is_neotree() then font_sizes.neotree = font_sizes.neotree + 1; set_font(font_sizes.neotree)

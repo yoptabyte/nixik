@@ -10,6 +10,7 @@
     ./emacs.nix
     ./social.nix
     ./desktop/default.nix
+    inputs.chatgpt-desktop-app.result.nixosModules.default
     ../home/hjem/common.nix
     (import "${inputs.hjem.src}/modules/nixos").default
     inputs.nixvim.result.nixosModules.nixvim
@@ -18,4 +19,5 @@
     inputs.xlibre-overlay.result.nixosModules.overlay-all-xlibre-drivers
   ];
   programs.nixvim.defaultEditor = true;
+  programs.chatgpt-desktop-app.enable = true;
 }

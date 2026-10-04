@@ -1,0 +1,66 @@
+# Kanagawa Lotus colours.
+inherits = "kanagawa"
+
+"ui.background" = { fg = "ink", bg = "paper" }
+"ui.text" = "ink"
+"ui.linenr" = "muted"
+"ui.linenr.selected" = { fg = "orange", modifiers = ["bold"] }
+"ui.gutter" = { fg = "muted", bg = "paper" }
+"ui.virtual" = "muted"
+"ui.virtual.inlay-hint" = "muted"
+"ui.cursorline.primary" = { bg = "paper_alt" }
+"ui.cursorcolumn.primary" = { bg = "paper_alt" }
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection" }
+"ui.statusline" = { fg = "ink", bg = "paper_alt" }
+"ui.statusline.inactive" = { fg = "muted", bg = "paper" }
+"ui.bufferline" = { fg = "muted", bg = "paper" }
+"ui.bufferline.active" = { fg = "ink", bg = "paper_alt" }
+"ui.bufferline.background" = { bg = "paper" }
+"ui.popup" = { fg = "ink", bg = "paper_alt" }
+"ui.help" = { fg = "ink", bg = "paper_alt" }
+"ui.menu" = { fg = "ink", bg = "paper_alt" }
+"ui.menu.selected" = { fg = "ink", bg = "selection" }
+"ui.window" = "selection"
+"ui.cursor.primary" = { fg = "paper", bg = "red" }
+
+"attribute" = { fg = "violet" }
+"type" = { fg = "green" }
+"type.builtin" = { fg = "green" }
+"constructor" = { fg = "blue" }
+"constant" = { fg = "orange" }
+"constant.numeric" = { fg = "orange" }
+"constant.character.escape" = { fg = "orange" }
+"string" = { fg = "green" }
+"string.regexp" = { fg = "cyan" }
+"string.special.url" = { fg = "blue" }
+"string.special.symbol" = { fg = "violet" }
+"comment" = { fg = "muted", modifiers = [] }
+"variable" = { fg = "ink" }
+"variable.builtin" = { fg = "red" }
+"variable.parameter" = { fg = "violet" }
+"variable.other.member" = { fg = "ink" }
+"label" = { fg = "blue" }
+"punctuation" = { fg = "ink" }
+"keyword" = { fg = "violet" }
+"keyword.control.return" = { fg = "red" }
+"operator" = { fg = "cyan" }
+"function" = { fg = "blue" }
+"function.builtin" = { fg = "cyan" }
+"function.macro" = { fg = "violet" }
+"tag" = { fg = "red" }
+"namespace" = { fg = "violet" }
+"special" = { fg = "orange" }
+
+[palette]
+paper = "#f2ecbc"
+paper_alt = "#e7dba0"
+ink = "#545464"
+muted = "#716e61"
+selection = "#c9cbd1"
+blue = "#4d699b"
+green = "#6f894e"
+orange = "#cc6d00"
+red = "#c84053"
+violet = "#766b90"
+cyan = "#597b75"

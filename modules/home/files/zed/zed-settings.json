@@ -3,5 +3,12 @@
     "mode": "light",
     "light": "Kanagawa Lotus",
     "dark": "Kanagawa Lotus"
-  }
+  },
+  "buffer_font_family": "ComicTrueMono Nerd Font Mono",
+  "buffer_font_fallbacks": [
+    "JetBrainsMono Nerd Font Mono",
+    "Symbols Nerd Font Mono"
+  ],
+  "buffer_font_weight": 400,
+  "ui_font_family": "ComicTrueMono Nerd Font Mono"
 }

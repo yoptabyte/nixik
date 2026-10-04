@@ -15,7 +15,9 @@
   environment.variables.EDITOR = "nvim";
 
   # Fonts
-  fonts.packages = with pkgs; [ nerd-fonts.zed-mono nerd-fonts.symbols-only ];
+  fonts.packages = (with pkgs; [ nerd-fonts.jetbrains-mono nerd-fonts.symbols-only ]) ++ [
+    (pkgs.callPackage ../../packages/comic-true-mono-nerd-font.nix { })
+  ];
 
   # Hostname
   networking.hostName = "yoptabyte-macbook";

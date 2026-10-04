@@ -147,6 +147,35 @@ sudo nixos-rebuild switch \
 
 ## Build troubleshooting
 
+### Fonts
+
+[Comic True Mono](https://github.com/CptIdea/ComicTrueMono) with Nerd Font icons
+is the default font for terminals, editors, bars, notifications and launchers.
+`packages/comic-true-mono-nerd-font.nix` patches the pinned upstream Regular,
+Italic, Bold and Bold Italic files with the official Nerd Fonts Patcher.
+The checked-in upstream Bold Italic file lacks Cyrillic, so it is regenerated
+from the complete Bold face using upstream's 12.7-degree slant and centering.
+The installed family is **ComicTrueMono Nerd Font Mono** and includes the
+complete Russian alphabet, including Ё/ё, in the same family as Latin.
+Linux also uses it for generic monospace, sans-serif and serif families and
+GTK interfaces. JetBrains Mono remains a fallback for unsupported characters.
+Rebuild and restart applications to apply changes.
+
+The `app-fonts` user service also updates GTK/GSettings and XFCE font overrides,
+registered Obsidian vaults, Vesktop QuickCSS and Zen's profile defaults and UI
+CSS. It changes font settings only, preserves other settings and creates
+`.before-comic-font` backups before its first edit. Run `app-fonts` to apply it
+again; restart Zen to load its profile changes. Websites that explicitly choose
+their own fonts keep those fonts.
+
+Nixvim includes [gitlens.nvim](https://github.com/pradhyu/gitlens.nvim):
+`<leader>gb` shows line blame and `<leader>gD` opens the corresponding commit diff.
+
+GOverlay uses the local `packages/goverlay.nix` override to fix Lazarus's
+wrapper: removing rpath arguments must also collapse and trim spaces in
+`NIX_LDFLAGS`. Otherwise `makeBinaryWrapper` rejects empty segments and the
+Lazarus dependency fails during installation.
+
 Build phases (`fixupPhase`, `patchPhase`, etc.) and compiler warnings are normal
 build output. A failed derivation is reported with `error: Cannot build`.
 The local Herdr package builds the vendored Ghostty library with the LLVM
@@ -162,9 +191,101 @@ must be addressed before retrying activation.
 
 ## Kernel and filesystems
 
-The shared kernel default is in `modules/nixos/laptop.nix`; override
-`boot.kernelPackages` in a host configuration to select another kernel.
+The shared kernel default is in `modules/nixos/laptop.nix`. Hosts importing
+`modules/nixos/gaming.nix` use CachyOS BORE instead; currently this is `xps15`.
+The kernel is pinned through npins to the `release` branch of
+[nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel/tree/release),
+using its original nixpkgs for the cached kernel and the system's nixpkgs for
+external modules such as NVIDIA. The generic x86-64 build avoids requiring AVX
+or LTO support from external modules. Update it with
+`npins update nix-cachyos-kernel`.
+
 A rebuild does not format disks. The new kernel takes effect after reboot.
+
+### Gaming on Wayland
+
+The gaming module enables Steam, Proton-GE, Protontricks, Gamescope, GameMode,
+and 64/32-bit OpenGL and Vulkan drivers. Lutris, Heroic, Wine, Winetricks,
+MangoHud, GOverlay, `vulkaninfo`, `vkcube`, `glxinfo`, and `vainfo` are installed.
+Steam's module also installs controller udev rules. Hyprland's XWayland support
+allows X11 games to run inside the Wayland session.
+
+In Steam, enable Steam Play for the desired games; select GE-Proton in a game's
+Compatibility settings if needed. Set its launch options to:
+
+```text
+game-run %command%
+```
+
+`game-run` requests GameMode, enables MangoHud, and selects NVIDIA on hosts with
+PRIME offload enabled. It also works outside Steam: `game-run lutris` or
+`game-run wine /path/to/game.exe`. GameMode uses the Intel `powersave` governor
+for dynamic frequency selection, raises process priority, and inhibits the
+screensaver while games are running. This governor still allows turbo; it is
+not the same setting as the desktop's power-saver profile.
+The module also increases `vm.max_map_count` to 1048576 for games with many mappings.
+
+The XPS host enables Intel thermald. To reduce game load, start with a 60 FPS
+limit (or 30 if needed), preferably in the game's own settings. For MangoHud:
+
+```bash
+MANGOHUD_CONFIG=fps_limit=60,cpu_temp,gpu_temp game-run ./start-game.sh
+```
+
+Steam launch options:
+
+```text
+MANGOHUD_CONFIG=fps_limit=60,cpu_temp,gpu_temp game-run %command%
+```
+
+In Lutris, keep `game-run` as the command prefix and add the environment
+variable `MANGOHUD_CONFIG` with value `fps_limit=60,cpu_temp,gpu_temp` under
+System options. Use `sensors` and `nvidia-smi` to inspect temperatures. These
+settings reduce load but cannot guarantee prevention of thermal shutdowns;
+repeated shutdowns also require checking cooling and power delivery.
+
+On the XPS 9500, the firmware exposes a `cool` thermal profile in addition to
+`quiet`, `balanced`, and `performance`. Dell's `cool` profile increases fan
+speed, but can also reduce performance; it is not a separate fan-only control.
+To try it temporarily:
+
+```bash
+echo cool | sudo tee /sys/firmware/acpi/platform_profile
+```
+
+Changing the desktop power profile can overwrite this choice. To further reduce
+CPU heat for all applications, temporarily disable Intel turbo (at a cost in
+CPU performance):
+
+```bash
+echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+```
+
+Write `0` to the same file to restore turbo. The default is normally restored
+after reboot; firmware or power-management software can also change it.
+
+For optional Gamescope scaling, use this Steam launch option (adjust resolution
+and frame limit to the game/display):
+
+```text
+game-run gamescope -w 1280 -h 720 -W 1920 -H 1080 -r 60 -f -- %command%
+```
+
+For the first rebuild, supply the kernel cache explicitly because the new Nix
+daemon settings only take effect after activation:
+
+```bash
+sudo nixos-rebuild boot \
+  --file nilla.nix --attr 'systems.nixos."xps15".result' \
+  --option extra-substituters https://attic.xuyh0120.win/lantian \
+  --option extra-trusted-public-keys 'lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc='
+```
+
+Reboot to use the kernel. Previous generations remain selectable in systemd-boot.
+After booting, inspect the graphics stack with `vulkaninfo --summary` and
+`glxinfo -B`; repeat with `nvidia-offload` to check the discrete GPU, and use
+`uname -r` to see the running kernel. Config comments name older NVIDIA cards;
+check `lspci -nn` on the target machine when changing driver branches.
 
 Mount definitions and UUIDs stay in each host's `hardware-configuration.nix`.
 Changing `fsType` only changes how NixOS mounts a partition; it does not convert

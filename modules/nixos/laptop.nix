@@ -2,7 +2,14 @@
 {
   # Fonts
   fonts.fontconfig.enable = true;
-  fonts.packages = with pkgs; [ nerd-fonts.zed-mono nerd-fonts.symbols-only ];
+  fonts.fontconfig.defaultFonts = {
+    monospace = [ "ComicTrueMono Nerd Font Mono" "JetBrainsMono Nerd Font Mono" ];
+    sansSerif = [ "ComicTrueMono Nerd Font Mono" "JetBrainsMono Nerd Font Mono" ];
+    serif = [ "ComicTrueMono Nerd Font Mono" "JetBrainsMono Nerd Font Mono" ];
+  };
+  fonts.packages = (with pkgs; [ nerd-fonts.jetbrains-mono nerd-fonts.symbols-only ]) ++ [
+    (pkgs.callPackage ../../packages/comic-true-mono-nerd-font.nix { })
+  ];
 
   # Timezone
   time.timeZone = "Europe/Lisbon";

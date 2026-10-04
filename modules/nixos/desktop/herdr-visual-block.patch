@@ -115,15 +115,16 @@ index 07dc8d1..132214a 100644
              'h' => self.move_copy_cursor(0, -1, outcome),
              'j' => self.move_copy_cursor(1, 0, outcome),
              'k' => self.move_copy_cursor(-1, 0, outcome),
-@@ -646,7 +651,7 @@ impl ClientShellState {
+@@ -643,8 +648,8 @@ impl ClientShellState {
          }
      }
  
 -    fn begin_copy_selection(&mut self, linewise: bool) {
 +    fn begin_copy_selection(&mut self, linewise: bool, rectangle: bool) {
-         let end_col = self
-             .copy_hit()
-             .map_or(0, |hit| hit.inner_rect.width.saturating_sub(1));
+         let width = self.copy_hit().map(|hit| hit.inner_rect.width);
+         let Some(copy_mode) = self.copy_mode.as_mut() else {
+             return;
+         };
 @@ -663,6 +668,15 @@ impl ClientShellState {
                  copy_mode.cursor.row,
                  end_col,

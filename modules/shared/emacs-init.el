@@ -59,7 +59,17 @@
       visible-bell t
       ring-bell-function 'ignore)
 
-(set-face-attribute 'default nil :font "ZedMono Nerd Font" :height 140)
+(defun my/code-font-faces (&rest _)
+  "Use Comic True Mono Nerd Font for Latin and Cyrillic code and comments."
+  (set-face-attribute 'default nil :family "ComicTrueMono Nerd Font Mono" :height 140
+                      :weight 'normal :slant 'normal)
+  (dolist (face '(font-lock-comment-face font-lock-comment-delimiter-face
+                 font-lock-doc-face font-lock-doc-markup-face))
+    (when (facep face)
+      (set-face-attribute face nil :family "ComicTrueMono Nerd Font Mono" :weight 'normal :slant 'normal))))
+(my/code-font-faces)
+(set-fontset-font t 'cyrillic (font-spec :family "ComicTrueMono Nerd Font Mono"))
+(advice-add 'enable-theme :after #'my/code-font-faces)
 (global-display-line-numbers-mode t)
 (setq display-line-numbers-type 'relative)
 (setq-default cursor-type 'bar)

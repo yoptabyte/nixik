@@ -106,8 +106,8 @@
           sketchybar --default \
             padding_left=10 \
             padding_right=12 \
-            icon.font="ZedMono Nerd Font:Bold:14.0" \
-            label.font="ZedMono Nerd Font:Regular:12.0" \
+            icon.font="ComicTrueMono Nerd Font Mono:Bold:14.0" \
+            label.font="ComicTrueMono Nerd Font Mono:Regular:12.0" \
             icon.color=0xffc84053 \
             label.color=0xffc84053 \
             background.color=0x00000000
@@ -375,7 +375,8 @@
 
         # Ghostty config
         ".config/ghostty/config".text = ''
-          font-family = ZedMono Nerd Font
+          font-family = ComicTrueMono Nerd Font Mono
+          font-family = JetBrainsMono Nerd Font Mono
           font-size = 11
           theme = Gruvbox Light
           background-opacity = 1.0
@@ -572,6 +573,7 @@
 
         # Code editor themes
         ".config/helix/config.toml".source = ../files/helix/helix-config.toml;
+        ".config/helix/themes/kanagawa_lotus.toml".source = ../files/helix/kanagawa_lotus.toml;
         ".config/zed/settings.json".source = ../files/zed/zed-settings.json;
 
         # Yazi config

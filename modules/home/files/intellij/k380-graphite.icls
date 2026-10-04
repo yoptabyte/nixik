@@ -9,6 +9,8 @@
   <option name="EDITOR_LIGATURES" value="true" />
   <option name="LINE_SPACING" value="1.2" />
 
+  <option name="EDITOR_FONT_NAME" value="ComicTrueMono Nerd Font Mono" />
+  <option name="CONSOLE_FONT_NAME" value="ComicTrueMono Nerd Font Mono" />
   <colors>
     <option name="CARET_COLOR" value="f0c040" />
     <option name="CARET_ROW_COLOR" value="302e26" />

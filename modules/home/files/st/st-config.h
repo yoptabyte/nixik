@@ -5,7 +5,7 @@
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "ZedMono Nerd Font:size=11:antialias=true:autohint=true";
+static char *font = "ComicTrueMono Nerd Font Mono:size=11:antialias=true:autohint=true";
 static int borderpx = 2;
 
 /*

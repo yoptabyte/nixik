@@ -1,5 +1,18 @@
 {
   "pins": {
+    "chatgpt-desktop-app": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "poeck",
+        "repo": "chatgpt-desktop-app-nix-flake"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "9ca36e94b8c21b268885b669c069684b232d9f44",
+      "url": "https://github.com/poeck/chatgpt-desktop-app-nix-flake/archive/9ca36e94b8c21b268885b669c069684b232d9f44.tar.gz",
+      "hash": "sha256-e3wZE0FHu8gTbAPvXErdqKIxNsgw8xlGqjNtM4lsgdA="
+    },
     "helium": {
       "type": "Git",
       "repository": {
@@ -9,9 +22,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "2f6586322d82beb2a50b01b129dea7dd7895d925",
-      "url": "https://github.com/schembriaiden/helium-browser-nix-flake/archive/2f6586322d82beb2a50b01b129dea7dd7895d925.tar.gz",
-      "hash": "sha256-PT3bAvBoht8N9MUj9zUuA1HgSbzlDI+KqDmXStMeiq0="
+      "revision": "14a8f68137d4db62213555937f23ad95e7f8c4e6",
+      "url": "https://github.com/schembriaiden/helium-browser-nix-flake/archive/14a8f68137d4db62213555937f23ad95e7f8c4e6.tar.gz",
+      "hash": "sha256-yr1b5Yql7XE3L/Q9urGNhnNXBAa14S3nfY7A+twhRIM="
     },
     "hjem": {
       "type": "Git",
@@ -22,9 +35,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "cef02450f2c18a7e2b9297ea8d366f9a597254f7",
-      "url": "https://github.com/feel-co/hjem/archive/cef02450f2c18a7e2b9297ea8d366f9a597254f7.tar.gz",
-      "hash": "sha256-tycoVCB2KSVdy9ERT1lJGHdP9Hf4FHanaEY25hUxylw="
+      "revision": "2b155694ce412300f240de06735c93779f9e19a4",
+      "url": "https://github.com/feel-co/hjem/archive/2b155694ce412300f240de06735c93779f9e19a4.tar.gz",
+      "hash": "sha256-JdmZVrzGDRRcOAwsYujnE7f/d1YZ9Xtk4z/1MWmQXxM="
     },
     "hjem-rum": {
       "type": "Git",
@@ -98,6 +111,19 @@
       "url": "https://github.com/nilla-nix/nixos/archive/5bf728fbe9cd7de44a489955f45fb872436f42af.tar.gz",
       "hash": "sha256-nXD1gHXrSmXnd9O1A90Q5nO8kz/LPTxng+NFIDDbSDk="
     },
+    "nix-cachyos-kernel": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "xddxdd",
+        "repo": "nix-cachyos-kernel"
+      },
+      "branch": "release",
+      "submodules": false,
+      "revision": "b1332396df6e880d7e3b6b451c6a74132ce8cf66",
+      "url": "https://github.com/xddxdd/nix-cachyos-kernel/archive/b1332396df6e880d7e3b6b451c6a74132ce8cf66.tar.gz",
+      "hash": "sha256-ANcKKTLB5oitjAYPp+iWts5clpbowVbDPVvt03P7Hes="
+    },
     "nix-darwin": {
       "type": "Git",
       "repository": {
@@ -120,9 +146,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "b4fd65b198c599cbe814fcb9f42d25d021595ec9",
-      "url": "https://github.com/nixos/nixpkgs/archive/b4fd65b198c599cbe814fcb9f42d25d021595ec9.tar.gz",
-      "hash": "sha256-ilerN1WLSvF+HMjziC/Wv99J5y02maDH+6hZPwsORKg="
+      "revision": "151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4",
+      "url": "https://github.com/nixos/nixpkgs/archive/151fa4e8ddfdd8dd25d945ad94ed54a13de9f6e4.tar.gz",
+      "hash": "sha256-Miqqk/ammqnTUxaoCyvtwoPeLbI1ksFyLxi/CazZpWY="
     },
     "nixvim": {
       "type": "Git",
@@ -133,9 +159,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "5980a626794486abad69fca7667f9c11dfbc3bd7",
-      "url": "https://github.com/nix-community/nixvim/archive/5980a626794486abad69fca7667f9c11dfbc3bd7.tar.gz",
-      "hash": "sha256-/496IQz8qNWHHLnc3Zvr0l4uxJ34igNhJhn7ZKAefFk="
+      "revision": "8fbc7d3ff1154fab898895e7c4e71a4d06936ce3",
+      "url": "https://github.com/nix-community/nixvim/archive/8fbc7d3ff1154fab898895e7c4e71a4d06936ce3.tar.gz",
+      "hash": "sha256-ySIbhYpjg8CnfuJTs/cfkEQuGpk02IzT+a3VDz7Cec0="
     },
     "opinionated-nix": {
       "type": "Git",
@@ -148,7 +174,8 @@
       "submodules": false,
       "revision": "1b5d38cfd24a6cd391fa1ddeea95c96579575b77",
       "url": "https://github.com/harveywuk/Opinionated-Nix/archive/1b5d38cfd24a6cd391fa1ddeea95c96579575b77.tar.gz",
-      "hash": "sha256-arMgUmvjNlLqmJOoZktBRyxqeS6Y/5aP14W24z/pauY="
+      "hash": "sha256-arMgUmvjNlLqmJOoZktBRyxqeS6Y/5aP14W24z/pauY=",
+      "frozen": true
     },
     "xlibre-overlay": {
       "type": "Git",
@@ -171,9 +198,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "90424e159acc21e53ea76780a3ad9cb5acef7cba",
-      "url": "https://github.com/0xc000022070/zen-browser-flake/archive/90424e159acc21e53ea76780a3ad9cb5acef7cba.tar.gz",
-      "hash": "sha256-zno5kJyjkflDauJgy9NHyoHfhAr0S2kCCMEwaHJ0a6A="
+      "revision": "d9e4e25d6ade5d541074045d332d887c044e11f5",
+      "url": "https://github.com/0xc000022070/zen-browser-flake/archive/d9e4e25d6ade5d541074045d332d887c044e11f5.tar.gz",
+      "hash": "sha256-F/scdmE9Y03TfSQWrBHaJWTRTr3rRQBqvJSDgF48g1c="
     }
   },
   "version": 8

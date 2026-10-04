@@ -76,7 +76,7 @@
     "on-click": "pavucontrol"
   },
 
-  "cpu": { "interval": 2, "format": "{usage}% 󰍛", "tooltip": true },
+  "cpu": { "interval": 2, "format": "{usage}% <span font_desc='Symbols Nerd Font 13'>󰍛</span>", "tooltip": true },
 
   "battery": {
     "format": "{icon} {capacity}%",

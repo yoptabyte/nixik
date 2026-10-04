@@ -1,4 +1,5 @@
-font-family = ZedMono Nerd Font
+font-family = ComicTrueMono Nerd Font Mono
+font-family = JetBrainsMono Nerd Font Mono
 font-size = 11
 theme = Gruvbox Light
 background-opacity = 1.0

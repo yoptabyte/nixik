@@ -1,6 +1,8 @@
 <scheme name="Kanagawa Lotus" version="142" parent_scheme="Default">
   <metaInfo><property name="created">2026-09-06T00:00:00</property></metaInfo>
   <option name="FONT_SCALE" value="1.0" />
+  <option name="EDITOR_FONT_NAME" value="ComicTrueMono Nerd Font Mono" />
+  <option name="CONSOLE_FONT_NAME" value="ComicTrueMono Nerd Font Mono" />
   <colors>
     <option name="CARET_COLOR" value="c84053" />
     <option name="CARET_ROW_COLOR" value="e7dba0" />

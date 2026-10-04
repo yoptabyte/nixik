@@ -183,7 +183,7 @@ in
         text = $TIME
         color = rgb(3c3836)
         font_size = 64
-        font_family = ZedMono Nerd Font
+        font_family = ComicTrueMono Nerd Font Mono
         position = 0, 140
         halign = center
         valign = center

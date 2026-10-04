@@ -9,7 +9,11 @@
     inputs.xlibre-overlay.result.nixosModules.nvidia-ignore-ABI
   ];
   networking.hostName = "xps15";
+  # Temporary: GNU ELPA is unreachable, and Emacs package sets need its compat archive.
+  modules.nixos.emacs.enable = false;
   programs.nm-applet.enable = false;
+  # Intel thermal management alongside power-profiles-daemon.
+  services.thermald.enable = true;
   environment.systemPackages = with pkgs; [ jetbrains.idea dbeaver-bin postman ];
 
   # NVIDIA driver
@@ -18,7 +22,7 @@
   hardware.nvidia = {
     # Required for Hyprland on NVIDIA
     modesetting.enable = true;
-    # GTX 1050 Mobile (Pascal/Maxwell) does not support open-source kernel modules
+    # Use proprietary kernel modules for this PRIME setup.
     open = false;
     # Use stable proprietary driver
     package = config.boot.kernelPackages.nvidiaPackages.stable;

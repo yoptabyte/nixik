@@ -98,6 +98,11 @@ let
 in
 {
   options.modules.nixos.emacs = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether to install the system Emacs package sets and daemons.";
+    };
     extraPackages = lib.mkOption {
       type = lib.types.functionTo (lib.types.listOf lib.types.package);
       default = epkgs: [];
@@ -111,12 +116,12 @@ in
       nix-direnv.enable = true;
     };
 
-    environment.systemPackages = [
-      myEmacs myEmacsLucidWrapped pkgs.rust-analyzer pkgs.imagemagick pkgs.file
+    environment.systemPackages = [ pkgs.rust-analyzer pkgs.imagemagick pkgs.file ]
+      ++ lib.optionals cfg.enable [ myEmacs myEmacsLucidWrapped
       # Java/Spring (jdtls, JDK, Maven) — НЕ системно: через flake devShell + envrc per-project
     ];
 
-    systemd.user.services.emacs = {
+    systemd.user.services.emacs = lib.mkIf cfg.enable {
       description = "Emacs daemon (pgtk/Wayland)";
       after = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
@@ -130,7 +135,7 @@ in
       };
     };
 
-    systemd.user.services.emacs-x11 = {
+    systemd.user.services.emacs-x11 = lib.mkIf cfg.enable {
       description = "Emacs daemon (lucid/X11)";
       after = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];

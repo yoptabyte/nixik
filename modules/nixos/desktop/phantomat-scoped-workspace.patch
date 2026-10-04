@@ -26,7 +26,7 @@ index a0c0da9..46aa749 100644
      HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
 @@ -528,7 +528,7 @@ static void registerConfigValues() {
      HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
-                                   makeShared<CStringValue>("plugin:spatialoverview:navigator:mono_font", "HUD readout font", Hyprlang::STRING{"JetBrainsMono Nerd Font"}));
+                                   makeShared<CStringValue>("plugin:spatialoverview:navigator:mono_font", "HUD readout font", Hyprlang::STRING{"ComicTrueMono Nerd Font Mono"}));
      HyprlandAPI::addConfigValueV2(SCROLLOVERVIEW_HANDLE,
 -                                  makeShared<CBoolValue>("plugin:spatialoverview:canvas:remember_layout", "remember where windows live across restarts and reopenings", false));
 +                                  makeShared<CBoolValue>("plugin:spatialoverview:canvas:remember_layout", "remember where windows live across restarts and reopenings", true));

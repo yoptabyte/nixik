@@ -5,5 +5,5 @@
     TERMINAL = "ghostty";
   };
 
-  # Ghostty is installed via hjem user packages
+  # Ghostty is installed via hjem user packages.
 }
