@@ -26,9 +26,6 @@ with pkgs; [
   unar
   zstd
 
-  # Media players
-  audacity
-
   # Binary cache push
   cachix
 

@@ -8,5 +8,10 @@
     ".config/JetBrains/IntelliJIdea2026.2/colors/Kanagawa Lotus.icls".source = ../files/intellij/kanagawa-lotus.icls;
     ".background-image".source = ../../../wallpapers/nix-wallpaper-k380.png;
   };
-  hjem.users.yoptabyte.packages = with pkgs; [ cliphist ffmpeg arandr ];
+  hjem.users.yoptabyte.packages = with pkgs; [
+    cliphist
+    ffmpeg
+    arandr
+    (callPackage ../../../packages/audacity.nix { })
+  ];
 }
