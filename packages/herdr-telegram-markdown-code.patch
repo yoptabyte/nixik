@@ -1,0 +1,642 @@
+diff --git a/internal/domain/command.go b/internal/domain/command.go
+--- a/internal/domain/command.go
++++ b/internal/domain/command.go
+@@ -341,12 +341,12 @@
+ 	return unknown
+ }
+ 
+-// GitSpec is one allow-listed git invocation: Sub names the subcommand the
+-// operator typed (status, diff, log) and Args is the complete argv after
+-// "git", composed here so the runner never builds one from phone input.
++// GitSpec is an allow-listed repository read. Args contains fixed git argv,
++// or a file/files request interpreted by the runner without invoking a shell.
+ type GitSpec struct {
+-	Sub  string
+-	Args []string
++	Sub      string
++	Args     []string
++	Markdown bool
+ }
+ 
+ // Bounds of the /git log count.
+@@ -356,18 +356,36 @@
+ )
+ 
+ // GitUsage is the reply to a /git shape outside the allow-list.
+-const GitUsage = "usage: /git status | diff [staged|remote] | log [N]"
++const GitUsage = "usage: /git status | diff [staged|remote] [md] | log [N] | files [directory] | file <path>"
+ 
+ // ParseGit maps the words after /git to a GitSpec: "status" → git status
+ // --short --branch; "diff" → git diff HEAD; "diff staged" → git diff
+ // --cached; "log [N]" → git log --oneline --decorate -n N (default
+ // GitLogDefault, clamped to 1..GitLogMax). Anything else is not allowed and
+-// answers false; no path or flag from the phone ever reaches git.
++// answers false. File paths are repository-relative and validated by the runner.
+ func ParseGit(args []string) (GitSpec, bool) {
+ 	if len(args) == 0 {
+ 		return GitSpec{}, false
+ 	}
++	if strings.EqualFold(args[0], "diff") && len(args) > 1 && strings.EqualFold(args[len(args)-1], "md") {
++		spec, ok := ParseGit(args[:len(args)-1])
++		if !ok || spec.Markdown {
++			return GitSpec{}, false
++		}
++		spec.Markdown = true
++		return spec, ok
++	}
+ 	switch strings.ToLower(args[0]) {
++	case "file", "files":
++		sub := strings.ToLower(args[0])
++		if len(args) == 1 && sub == "file" {
++			return GitSpec{}, false
++		}
++		path := "."
++		if len(args) > 1 {
++			path = strings.Join(args[1:], " ")
++		}
++		return GitSpec{Sub: sub, Args: []string{sub, path}, Markdown: sub == "file"}, true
+ 	case "status":
+ 		if len(args) == 1 {
+ 			return GitSpec{Sub: "status", Args: []string{"status", "--short", "--branch"}}, true
+@@ -475,6 +493,10 @@
+ 	case "new":
+ 		return parseNew(args)
+ 	case "git":
++		// Preserve spaces in an unquoted repository-relative file name.
++		if len(args) > 1 && (strings.EqualFold(args[0], "file") || strings.EqualFold(args[0], "files")) {
++			args = []string{args[0], strings.TrimSpace(strings.TrimPrefix(rest, args[0]))}
++		}
+ 		spec, _ := ParseGit(args)
+ 		return Command{Kind: CmdGit, Git: spec}
+ 	case "observers":
+diff --git a/internal/domain/git_markdown_test.go b/internal/domain/git_markdown_test.go
+--- /dev/null
++++ b/internal/domain/git_markdown_test.go
+@@ -0,0 +1,31 @@
++package domain_test
++
++import (
++	"reflect"
++	"testing"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++func TestParseGitMarkdownAndFiles(t *testing.T) {
++	for _, words := range [][]string{{"diff", "md"}, {"diff", "staged", "md"}, {"diff", "remote", "md"}} {
++		base, ok := domain.ParseGit(words[:len(words)-1])
++		got, accepted := domain.ParseGit(words)
++		if !ok || !accepted || !got.Markdown || !reflect.DeepEqual(got.Args, base.Args) {
++			t.Fatalf("%v = %+v, %v", words, got, accepted)
++		}
++	}
++	for _, words := range [][]string{{"diff", "md", "md"}, {"diff", "remote", "--stat", "md"}, {"file"}, {"diff", "md", "remote"}} {
++		if _, ok := domain.ParseGit(words); ok {
++			t.Fatalf("accepted %v", words)
++		}
++	}
++	cmd := domain.ParseCommand("/git file src/my  file.py", "bot")
++	if cmd.Kind != domain.CmdGit || !cmd.Git.Markdown || !reflect.DeepEqual(cmd.Git.Args, []string{"file", "src/my  file.py"}) {
++		t.Fatalf("file command = %+v", cmd)
++	}
++	spec, ok := domain.ParseGit([]string{"files"})
++	if !ok || !reflect.DeepEqual(spec.Args, []string{"files", "."}) {
++		t.Fatalf("files = %+v", spec)
++	}
++}
+diff --git a/internal/adapters/system/git.go b/internal/adapters/system/git.go
+--- a/internal/adapters/system/git.go
++++ b/internal/adapters/system/git.go
+@@ -159,6 +159,9 @@
+ 
+ // Run implements domain.GitRunner.
+ func (r *GitRunner) Run(ctx context.Context, dir string, args []string) (domain.GitResult, error) {
++	if len(args) == 2 && (args[0] == "file" || args[0] == "files") {
++		return r.workingFiles(ctx, dir, args[0], args[1])
++	}
+ 	if len(args) == 4 && args[0] == "diff" && args[1] == "--merge-base" && args[2] == "@{upstream}" && args[3] == "--" {
+ 		return r.remoteDiff(ctx, dir)
+ 	}
+diff --git a/internal/adapters/system/git_files.go b/internal/adapters/system/git_files.go
+--- /dev/null
++++ b/internal/adapters/system/git_files.go
+@@ -0,0 +1,151 @@
++package system
++
++import (
++	"bytes"
++	"context"
++	"fmt"
++	"io"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"sort"
++	"strconv"
++	"strings"
++	"unicode/utf8"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++// workingFiles reads current working-tree files, not blobs from HEAD. The git
++// listing excludes ignored untracked files. os.Root confines reads even when
++// a path component is a symlink; the nonblocking open also refuses special files.
++func (r *GitRunner) workingFiles(ctx context.Context, dir, sub, name string) (domain.GitResult, error) {
++	name = filepath.Clean(name)
++	if !filepath.IsLocal(name) {
++		return domain.GitResult{}, fmt.Errorf("use a path relative to the repository root")
++	}
++	for _, part := range strings.Split(filepath.ToSlash(name), "/") {
++		if strings.EqualFold(part, ".git") {
++			return domain.GitResult{}, fmt.Errorf("git metadata is not a source file")
++		}
++	}
++	bin, err := exec.LookPath(r.bin)
++	if err != nil {
++		return domain.GitResult{}, domain.ErrGitMissing
++	}
++	ctx, cancel := context.WithTimeout(ctx, r.timeout)
++	defer cancel()
++	query := func(where string, args ...string) ([]byte, bool, error) {
++		cmd := r.command(ctx, bin, where, gitArgv(args, nil))
++		out := &limitedWriter{max: r.maxBytes}
++		var stderr bytes.Buffer
++		cmd.Stdout, cmd.Stderr = out, &stderr
++		err := cmd.Run()
++		if ctx.Err() != nil {
++			return nil, false, ctx.Err()
++		}
++		if err != nil && !out.capped {
++			if strings.Contains(stderr.String(), "not a git repository") {
++				return nil, false, domain.ErrNotRepository
++			}
++			return nil, false, fmt.Errorf("git %s: %w: %s", args[0], err, firstLine(stderr.String()))
++		}
++		return out.buf.Bytes(), out.capped, nil
++	}
++	rootBytes, capped, err := query(dir, "rev-parse", "--show-toplevel")
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	if capped {
++		return domain.GitResult{}, fmt.Errorf("repository path exceeded the limit")
++	}
++	rootName := strings.TrimSuffix(string(rootBytes), "\n")
++	paths, capped, err := query(rootName, "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", ":(literal)"+filepath.ToSlash(name))
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	if capped {
++		paths = paths[:bytes.LastIndexByte(paths, 0)+1]
++	}
++	root, err := os.OpenRoot(rootName)
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	defer root.Close()
++	seen := map[string]bool{}
++	var names []string
++	for _, path := range strings.Split(string(paths), "\x00") {
++		if ctx.Err() != nil {
++			return domain.GitResult{}, ctx.Err()
++		}
++		if path == "" || seen[path] {
++			continue
++		}
++		seen[path] = true
++		if sub == "file" && path == filepath.ToSlash(name) {
++			return r.readWorkingFile(root, name)
++		}
++		// Deleted files and submodule/nested-repository directories are not code.
++		info, err := root.Lstat(path)
++		if err != nil || !info.Mode().IsRegular() {
++			continue
++		}
++		if strings.ContainsAny(path, "\n\r\t") {
++			path = strconv.Quote(path)
++		}
++		names = append(names, path)
++	}
++	if sub == "file" {
++		if capped {
++			return domain.GitResult{}, fmt.Errorf("file listing exceeded the limit; narrow the path")
++		}
++		return domain.GitResult{}, fmt.Errorf("file not found in tracked or non-ignored local files; use /git files")
++	}
++	sort.Strings(names)
++	return domain.GitResult{Output: strings.Join(names, "\n"), Truncated: capped}, nil
++}
++
++func (r *GitRunner) readWorkingFile(root *os.Root, name string) (domain.GitResult, error) {
++	parts := strings.Split(name, string(filepath.Separator))
++	for n := range parts {
++		info, err := root.Lstat(filepath.Join(parts[:n+1]...))
++		if err != nil {
++			return domain.GitResult{}, err
++		}
++		if info.Mode()&os.ModeSymlink != 0 {
++			return domain.GitResult{}, fmt.Errorf("symlinks cannot be viewed as source files")
++		}
++	}
++	f, err := root.OpenFile(name, os.O_RDONLY|fileOpenNonblock, 0)
++	if err != nil {
++		return domain.GitResult{}, fmt.Errorf("cannot open local file: %w", err)
++	}
++	defer f.Close()
++	info, err := f.Stat()
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	if !info.Mode().IsRegular() {
++		return domain.GitResult{}, fmt.Errorf("only regular text files can be viewed")
++	}
++	data, err := io.ReadAll(io.LimitReader(f, int64(r.maxBytes)+1))
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	capped := len(data) > r.maxBytes
++	if capped {
++		data = data[:r.maxBytes]
++		// Do not turn a valid UTF-8 file into invalid text at the byte limit.
++		start := len(data)
++		for start > 0 && !utf8.RuneStart(data[start-1]) {
++			start--
++		}
++		if start > 0 && !utf8.FullRune(data[start-1:]) {
++			data = data[:start-1]
++		}
++	}
++	if !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
++		return domain.GitResult{}, fmt.Errorf("binary files are not supported; choose a text source file")
++	}
++	return domain.GitResult{Output: string(data), Truncated: capped}, nil
++}
+diff --git a/internal/adapters/system/git_files_unix.go b/internal/adapters/system/git_files_unix.go
+--- /dev/null
++++ b/internal/adapters/system/git_files_unix.go
+@@ -0,0 +1,7 @@
++//go:build unix
++
++package system
++
++import "syscall"
++
++const fileOpenNonblock = syscall.O_NONBLOCK
+diff --git a/internal/adapters/system/git_files_other.go b/internal/adapters/system/git_files_other.go
+--- /dev/null
++++ b/internal/adapters/system/git_files_other.go
+@@ -0,0 +1,5 @@
++//go:build !unix
++
++package system
++
++const fileOpenNonblock = 0
+diff --git a/internal/adapters/system/git_files_test.go b/internal/adapters/system/git_files_test.go
+--- /dev/null
++++ b/internal/adapters/system/git_files_test.go
+@@ -0,0 +1,108 @@
++package system
++
++import (
++	"bytes"
++	"context"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"strings"
++	"testing"
++	"unicode/utf8"
++)
++
++func TestGitWorkingFilesReadsCurrentCodeAndPreservesIndex(t *testing.T) {
++	dir := gitRepo(t)
++	write := func(name, data string) {
++		t.Helper()
++		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0600); err != nil {
++			t.Fatal(err)
++		}
++	}
++	write(".gitignore", "ignored.py\n")
++	write("ignored.py", "private\n")
++	if err := os.Mkdir(filepath.Join(dir, "src"), 0700); err != nil {
++		t.Fatal(err)
++	}
++	write("src/new  file.py", "print('local only')\n\n  ")
++	cmd := exec.Command("git", "add", "a.txt")
++	cmd.Dir = dir
++	if out, err := cmd.CombinedOutput(); err != nil {
++		t.Fatalf("stage: %v: %s", err, out)
++	}
++	write("a.txt", "staged plus unstaged\n")
++	indexBefore, err := os.ReadFile(filepath.Join(dir, ".git/index"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	r := NewGitRunner(nil)
++	ctx := context.Background()
++	files, err := r.Run(ctx, filepath.Join(dir, "src"), []string{"files", "."})
++	if err != nil || !strings.Contains(files.Output, "a.txt") || !strings.Contains(files.Output, "src/new  file.py") || strings.Contains(files.Output, "ignored.py") {
++		t.Fatalf("files = %+v, %v", files, err)
++	}
++	filtered, err := r.Run(ctx, dir, []string{"files", "src"})
++	if err != nil || filtered.Output != "src/new  file.py" {
++		t.Fatalf("filtered = %+v, %v", filtered, err)
++	}
++	for name, want := range map[string]string{"a.txt": "staged plus unstaged\n", "src/new  file.py": "print('local only')\n\n  "} {
++		got, err := r.Run(ctx, filepath.Join(dir, "src"), []string{"file", name})
++		if err != nil || got.Output != want || got.Truncated {
++			t.Fatalf("%s = %+v, %v", name, got, err)
++		}
++	}
++	indexAfter, err := os.ReadFile(filepath.Join(dir, ".git/index"))
++	if err != nil || !bytes.Equal(indexBefore, indexAfter) {
++		t.Fatal("working file reads changed index")
++	}
++}
++
++func TestGitWorkingFilesRejectsUnsafeOrNonTextPaths(t *testing.T) {
++	dir := gitRepo(t)
++	outside := filepath.Join(t.TempDir(), "outside.py")
++	if err := os.WriteFile(outside, []byte("outside\n"), 0600); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Symlink(outside, filepath.Join(dir, "escape.py")); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Symlink(filepath.Join(dir, ".git/config"), filepath.Join(dir, "metadata.py")); err != nil {
++		t.Fatal(err)
++	}
++	for name, data := range map[string][]byte{".gitignore": []byte("ignored.py\n"), "ignored.py": []byte("secret"), "binary": {0, 1, 2}, "utf8-invalid": {0xff}} {
++		if err := os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
++			t.Fatal(err)
++		}
++	}
++	r := NewGitRunner(nil)
++	for _, name := range []string{"../outside.py", outside, ".git/config", "escape.py", "metadata.py", "ignored.py", "binary", "utf8-invalid", ".", "--help", ":(glob)*", "missing.py"} {
++		if got, err := r.Run(context.Background(), dir, []string{"file", name}); err == nil {
++			t.Fatalf("read %q = %+v", name, got)
++		}
++	}
++}
++
++func TestGitWorkingFileCapAndEmpty(t *testing.T) {
++	dir := gitRepo(t)
++	r := NewGitRunner(nil)
++	r.maxBytes = 128
++	if err := os.WriteFile(filepath.Join(dir, "text.py"), []byte(strings.Repeat("я", 100)), 0600); err != nil {
++		t.Fatal(err)
++	}
++	got, err := r.Run(context.Background(), dir, []string{"file", "text.py"})
++	if err != nil || !got.Truncated || len(got.Output) != 128 || !utf8.ValidString(got.Output) {
++		t.Fatalf("utf8 cap = %+v, %v", got, err)
++	}
++	r.maxBytes = 129
++	got, err = r.Run(context.Background(), dir, []string{"file", "text.py"})
++	if err != nil || !got.Truncated || len(got.Output) != 128 || !utf8.ValidString(got.Output) {
++		t.Fatalf("partial utf8 = %+v, %v", got, err)
++	}
++	if err := os.WriteFile(filepath.Join(dir, "empty.py"), nil, 0600); err != nil {
++		t.Fatal(err)
++	}
++	got, err = r.Run(context.Background(), dir, []string{"file", "empty.py"})
++	if err != nil || got.Output != "" || got.Truncated {
++		t.Fatalf("empty file = %+v, %v", got, err)
++	}
++}
+diff --git a/internal/app/inbound.go b/internal/app/inbound.go
+--- a/internal/app/inbound.go
++++ b/internal/app/inbound.go
+@@ -21,7 +21,8 @@
+ /screen [N|all]: for idle or done OpenCode, Codex, Antigravity, Pi or Muse, post its complete last reply when available; otherwise the visible screen; with N the screen's last N lines, with "all" everything since your last message
+ /keys k1 k2 ...: send raw keys to the agent (esc, enter, y, 1 ...); /keys shift+left opens queued Codex questions
+ /focus: bring the agent's pane to the front in Herdr
+-/git status | diff [staged|remote] | log [N]: git in the agent's directory; remote includes local commits, working changes and untracked files since the upstream merge base (last fetch); long output arrives as a file
++/git status | diff [staged|remote] [md] | log [N]: git in the agent's directory; remote includes all local changes since the upstream merge base (last fetch); md always sends a Markdown file
++/git files [directory] | file <path>: list local source files or receive the current file as Markdown; paths are relative to the repository root
+ /stop: send esc to the agent (soft cancel of the running turn or dialog)
+ /interrupt: send ctrl+c to the agent (hard interrupt)
+ /close: close the agent's pane after a Yes/No confirmation
+@@ -1281,16 +1282,19 @@
+ 			slog.Int64("dur_ms", dur.Milliseconds()), slog.String("err", err.Error()))
+ 		return i.reply(ctx, msg.ThreadID, msg.MessageID, gitFailure(spec.Sub, err))
+ 	}
+-	out := strings.TrimRight(res.Output, " \t\r\n")
++	out := res.Output
++	if spec.Sub != "file" {
++		out = strings.TrimRight(out, " \t\r\n")
++	}
+ 	lines := 0
+ 	if out != "" {
+-		lines = strings.Count(out, "\n") + 1
++		lines = strings.Count(strings.TrimSuffix(out, "\n"), "\n") + 1
+ 	}
+-	asDocument := utf8.RuneCountInString(out) > gitInlineRunes
++	asDocument := spec.Markdown || res.Truncated || utf8.RuneCountInString(out) > gitInlineRunes
+ 	i.log.Info("git command", slog.String("key", key.String()), slog.String("sub", spec.Sub), slog.String("dir", agent.Cwd),
+ 		slog.Int64("dur_ms", dur.Milliseconds()), slog.Int("bytes", len(out)), slog.Int("lines", lines),
+ 		slog.Bool("truncated", res.Truncated), slog.Bool("as_document", asDocument))
+-	if out == "" {
++	if out == "" && spec.Sub != "file" && !spec.Markdown {
+ 		return i.reply(ctx, msg.ThreadID, msg.MessageID, gitEmpty(spec.Sub))
+ 	}
+ 	if !asDocument {
+@@ -1307,10 +1311,26 @@
+ 	if res.Truncated {
+ 		caption += ", truncated"
+ 	}
++	data := []byte(out + "\n")
++	if spec.Markdown {
++		ext = ".md"
++		data = []byte(gitMarkdown(spec, out, res.Truncated))
++	}
++	name := fmt.Sprintf("%s-%s-%s%s", filepath.Base(agent.Cwd), spec.Sub, i.clock.Now().Format("150405"), ext)
++	if spec.Sub == "file" && len(spec.Args) == 2 {
++		name = filepath.Base(spec.Args[1]) + ".md"
++		caption = fmt.Sprintf("local working-tree file %q · %d lines", spec.Args[1], lines)
++		if res.Truncated {
++			caption += ", truncated"
++		}
++	}
++	if runes := []rune(caption); len(runes) > 900 {
++		caption = string(runes[:900]) + "…"
++	}
+ 	doc := domain.Document{
+ 		ThreadID: msg.ThreadID,
+-		Name:     fmt.Sprintf("%s-%s-%s%s", filepath.Base(agent.Cwd), spec.Sub, i.clock.Now().Format("150405"), ext),
+-		Data:     []byte(out + "\n"),
++		Name:     name,
++		Data:     data,
+ 		Caption:  caption,
+ 		ReplyTo:  msg.MessageID,
+ 	}
+@@ -1326,6 +1346,8 @@
+ 		return "no changes"
+ 	case "log":
+ 		return "no commits"
++	case "files":
++		return "no local source files found"
+ 	}
+ 	return "nothing"
+ }
+diff --git a/internal/app/git_markdown.go b/internal/app/git_markdown.go
+--- /dev/null
++++ b/internal/app/git_markdown.go
+@@ -0,0 +1,64 @@
++package app
++
++import (
++	"path/filepath"
++	"strings"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++func gitMarkdown(spec domain.GitSpec, out string, truncated bool) string {
++	title, language, note := "Local diff", "diff", "Changes in the local working tree against HEAD."
++	if len(spec.Args) == 4 && spec.Args[1] == "--merge-base" {
++		note = "Local changes since the upstream merge base (tracking reference from the last git fetch); includes local commits, staged/unstaged changes and non-ignored untracked files."
++	} else if len(spec.Args) == 2 && spec.Args[1] == "--cached" {
++		note = "Staged changes against HEAD."
++	} else if spec.Sub == "file" {
++		title, note, language = "Local source file", "Current contents on this computer, including unpushed and uncommitted edits.", ""
++		if len(spec.Args) == 2 {
++			language = sourceLanguage(spec.Args[1])
++		}
++	}
++	var b strings.Builder
++	b.WriteString("# " + title + "\n\n" + note + "\n\n")
++	if spec.Sub == "file" && len(spec.Args) == 2 {
++		b.WriteString("Repository-relative path:\n\n" + markdownCode(spec.Args[1], "text") + "\n")
++	}
++	if truncated {
++		b.WriteString("> Output truncated at the size limit. This is a partial view.\n\n")
++	}
++	if out == "" && spec.Sub != "file" {
++		b.WriteString("No changes.\n")
++		return b.String()
++	}
++	b.WriteString(markdownCode(out, language))
++	return b.String()
++}
++
++// A fence longer than every backtick run keeps embedded Markdown/code intact.
++func markdownCode(text, language string) string {
++	longest, run := 2, 0
++	for _, c := range text {
++		if c == '`' {
++			run++
++			longest = max(longest, run)
++		} else {
++			run = 0
++		}
++	}
++	fence := strings.Repeat("`", longest+1)
++	if text != "" && !strings.HasSuffix(text, "\n") {
++		text += "\n"
++	}
++	return fence + language + "\n" + text + fence + "\n"
++}
++
++func sourceLanguage(name string) string {
++	languages := map[string]string{
++		".go": "go", ".py": "python", ".js": "javascript", ".jsx": "jsx", ".ts": "typescript", ".tsx": "tsx",
++		".nix": "nix", ".rs": "rust", ".php": "php", ".sh": "bash", ".bash": "bash", ".json": "json",
++		".yaml": "yaml", ".yml": "yaml", ".toml": "toml", ".html": "html", ".css": "css", ".sql": "sql",
++		".md": "markdown", ".c": "c", ".h": "c", ".cpp": "cpp", ".java": "java", ".rb": "ruby",
++	}
++	return languages[strings.ToLower(filepath.Ext(name))]
++}
+diff --git a/internal/app/inbound_git_markdown_test.go b/internal/app/inbound_git_markdown_test.go
+--- /dev/null
++++ b/internal/app/inbound_git_markdown_test.go
+@@ -0,0 +1,64 @@
++package app
++
++import (
++	"strings"
++	"testing"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++func TestInboundGitMarkdownAlwaysDocument(t *testing.T) {
++	for _, command := range []string{"/git diff md", "/git diff staged md", "/git diff remote md"} {
++		t.Run(command, func(t *testing.T) {
++			f := newBridgeFixture(t)
++			gitAgent(t, f)
++			f.git.SetResult(domain.GitResult{Output: "+small change\n"})
++			if err := f.in.HandleTopic(f.ctx, topicMsg(101, 7, command)); err != nil {
++				t.Fatal(err)
++			}
++			docs := f.tg.Documents()
++			if len(docs) != 1 || !strings.HasSuffix(docs[0].Name, ".md") || !strings.Contains(string(docs[0].Data), "```diff\n+small change\n```\n") {
++				t.Fatalf("markdown = %+v", docs)
++			}
++			calls := f.git.Calls()
++			if len(calls) != 1 || strings.Contains(strings.Join(calls[0].Args, " "), "md") {
++				t.Fatal("md reached git argv")
++			}
++			if strings.Contains(command, "remote") && !strings.Contains(string(docs[0].Data), "last git fetch") {
++				t.Fatal("missing remote base explanation")
++			}
++		})
++	}
++}
++
++func TestInboundGitFilePreservesWhitespaceAndMarkdownFences(t *testing.T) {
++	f := newBridgeFixture(t)
++	gitAgent(t, f)
++	text := "```markdown\n````\n\n  "
++	f.git.SetResult(domain.GitResult{Output: text, Truncated: true})
++	if err := f.in.HandleTopic(f.ctx, topicMsg(101, 7, "/git file src/note.md")); err != nil {
++		t.Fatal(err)
++	}
++	docs := f.tg.Documents()
++	if len(docs) != 1 || docs[0].Name != "note.md.md" {
++		t.Fatalf("document = %+v", docs)
++	}
++	data := string(docs[0].Data)
++	if !strings.Contains(data, "`````markdown\n"+text+"\n`````\n") || !strings.Contains(data, "partial view") || !strings.Contains(docs[0].Caption, "truncated") {
++		t.Fatalf("bad file markdown: %q", data)
++	}
++}
++
++func TestInboundGitEmptyMarkdownAndFile(t *testing.T) {
++	for _, command := range []string{"/git diff remote md", "/git file empty.py"} {
++		f := newBridgeFixture(t)
++		gitAgent(t, f)
++		if err := f.in.HandleTopic(f.ctx, topicMsg(101, 7, command)); err != nil {
++			t.Fatal(err)
++		}
++		docs := f.tg.Documents()
++		if len(docs) != 1 || !strings.HasSuffix(docs[0].Name, ".md") {
++			t.Fatalf("empty document = %+v", docs)
++		}
++	}
++}
+diff --git a/docs/commands.md b/docs/commands.md
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -96,6 +96,21 @@
+ An unavailable comparison base returns a setup hint.
+ Large patches arrive as files under the same 5 MB output limit as other diffs.
+ 
++Append `md` to a diff command to always receive a Markdown document, including
++for short or empty diffs: `/git diff remote md`, `/git diff md`, or
++`/git diff staged md`. The document includes the comparison base and a fenced
++`diff` block. A partial result is explicitly labelled in the document.
++
++`/git files` lists current tracked and non-ignored untracked files; use
++`/git files src` to narrow it to a directory. `/git file src/example.py` sends
++the current working-tree file as `example.py.md`, with a language-labelled
++code block. No commit or push is needed. Paths are relative to the repository
++root, even when the agent runs from a subdirectory. Type paths containing
++spaces without quotes. Deleted files, ignored untracked files, symlinks,
++binary files, Git metadata and paths outside the repository cannot be viewed.
++Each file is limited to 5 MB; a cut file is labelled as a partial view.
++Existing secret-redaction settings also apply to these documents.
++
+ ## Claude Code commands
+ 
+ The four Claude Code commands are typed verbatim through `agent.prompt`, so

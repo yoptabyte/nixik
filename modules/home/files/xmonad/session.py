@@ -61,15 +61,25 @@ def stop(process):
         process.wait()
 
 
+def tray_geometry(outputs):
+    """Anchor the 22px tray to the primary output, falling back to the screen."""
+    for output in outputs.values():
+        if output["primary"] and output["geometry"]:
+            width, height, x, y = map(int, re.fullmatch(r"(\d+)x(\d+)\+(\d+)\+(\d+)",
+                                                     output["geometry"]).groups())
+            return f"1x1+{x + width - 22}+{y + height - 22}"
+    return "1x1-0-0"
+
+
 def main():
     children = {}
     config = Path.home() / ".config"
     commands = {
         "xmobar": ["xmobar", str(config / "xmobar/xmobarrc")],
-        "trayer": ["trayer", "--edge", "bottom", "--align", "right", "--widthtype", "request",
-                   "--width", "1", "--height", "22", "--SetDockType", "true", "--SetPartialStrut", "true",
-                   "--transparent", "true", "--alpha", "0", "--tint", "0x282828", "--expand", "false",
-                   "--padding", "2", "--iconspacing", "2", "--monitor", "primary"],
+        "stalonetray": ["stalonetray", "--geometry", "1x1-0-0", "--grow-gravity", "SE",
+                        "--max-geometry", "0x1", "--icon-size", "18", "--slot-size", "22",
+                        "--window-type", "dock", "--window-strut", "bottom", "--sticky",
+                        "--skip-taskbar", "--background", "#282828"],
         "picom": ["picom", "--config", str(config / "picom/picom.conf")],
         "snixembed": ["snixembed"],
     }
@@ -77,8 +87,8 @@ def main():
     signal.signal(signal.SIGINT, lambda *_: sys.exit(0))
     previous = None
     try:
-        # Migrate processes from the previous, unsupervised startup hook.
-        for name in commands:
+        # Migrate old tray instances and the previous, unsupervised startup hook.
+        for name in (*commands, "trayer"):
             subprocess.run(["pkill", "-u", str(os.getuid()), "-x", name], check=False)
         while True:
             try:
@@ -87,10 +97,11 @@ def main():
                 if command:
                     subprocess.run(command, check=True, timeout=5)
                     outputs = query_outputs()
+                commands["stalonetray"][2] = tray_geometry(outputs)
                 fingerprint = repr(outputs)
                 if previous != fingerprint:
                     # Reinitialize GLX as well: some drivers retain stale drawable state.
-                    for name in ("xmobar", "trayer", "picom"):
+                    for name in ("xmobar", "stalonetray", "picom"):
                         if name in children:
                             stop(children.pop(name))
                     previous = fingerprint

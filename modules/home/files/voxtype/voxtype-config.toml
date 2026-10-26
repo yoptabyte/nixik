@@ -9,11 +9,16 @@ pause_media = true
 
 [whisper]
 # Multilingual model: dictation works with both Russian and English.
-model = "base"
+model = "large-v3-turbo"
 language = "auto"
+flash_attention = true
 
 [output]
-mode = "type"
+# Paste Unicode text atomically instead of emulating each character/keymap.
+mode = "paste"
+paste_keys = "shift+insert"
+restore_clipboard = true
+restore_clipboard_delay_ms = 300
 fallback_to_clipboard = true
 
 [output.notification]

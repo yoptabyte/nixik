@@ -43,6 +43,16 @@
     wifi.powersave = false;
   };
 
+  # Tailscale VPN (includes the CLI package)
+  services.tailscale.enable = true;
+
+  # SSH access over Tailscale
+  services.openssh = {
+    enable = true;
+    openFirewall = false;
+  };
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 22 ];
+
   # DNS servers (Google + Cloudflare)
   networking.nameservers = [ "8.8.8.8" "1.1.1.1" ];
 

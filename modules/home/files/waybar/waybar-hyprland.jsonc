@@ -10,7 +10,21 @@
 
   "modules-left": ["custom/nixos", "hyprland/workspaces", "mpris"],
   "modules-center": ["clock"],
-  "modules-right": ["tray", "network", "pulseaudio", "cpu", "battery"],
+  "modules-right": ["custom/voxtype", "tray", "network", "pulseaudio", "cpu", "battery"],
+
+  "custom/voxtype": {
+    "exec": "/run/current-system/sw/bin/voxtype status --follow --format json",
+    "return-type": "json",
+    "format": "{icon}",
+    "format-icons": {
+      "idle": "",
+      "recording": "● Recording",
+      "transcribing": " Transcribing…",
+      "stopped": ""
+    },
+    "tooltip": true,
+    "restart-interval": 5
+  },
 
   "custom/nixos": {
     "format": "",

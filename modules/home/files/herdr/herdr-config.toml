@@ -1,7 +1,7 @@
 onboarding = false
 
-# Mirrors the existing tmux muscle memory: Ctrl+B prefix, Vi-style pane keys,
-# Alt+arrows for focus and Alt+digits for windows/tabs.
+# Direct Alt shortcuts are primary; Ctrl+B remains a fallback for prefix actions.
+# Existing Alt chords keep their meanings, including navigation and window/tab actions.
 [theme]
 name = "gruvbox-light"
 
@@ -15,18 +15,18 @@ new_cwd = "follow"
 
 [keys]
 prefix = "ctrl+b"
-# Copy mode: Ctrl+B, [ opens it; Ctrl+V starts a Vim-style rectangular selection.
+# Copy mode: Alt+[ opens it; Ctrl+V starts a Vim-style rectangular selection.
 # Move with h/j/k/l, then y or Enter copies the selected columns.
 reload_config = ["prefix+shift+r", "alt+r"]
 detach = ["prefix+d", "alt+d"]
 goto = "alt+t"
 new_workspace = "alt+s"
 close_workspace = "alt+x"
-copy_mode = "prefix+["
+copy_mode = ["prefix+[", "alt+["]
 split_vertical = ["prefix+v", "alt+v"]
-split_horizontal = ["prefix+shift+v", "alt+h"]
+split_horizontal = ["prefix+shift+v", "alt+h", "alt+shift+v"]
 close_pane = ["prefix+x", "alt+c"]
-zoom = "prefix+z"
+zoom = ["prefix+z", "alt+z"]
 focus_pane_left = ["prefix+h", "alt+left"]
 focus_pane_down = ["prefix+j", "alt+down"]
 focus_pane_up = ["prefix+k", "alt+up"]
@@ -50,7 +50,7 @@ confirm_close = true
 prompt_new_tab_name = false
 
 [[keys.command]]
-key = "prefix+alt+g"
+key = ["alt+g", "prefix+alt+g"]
 type = "popup"
 command = "lazygit"
 description = "Lazygit"
@@ -58,7 +58,7 @@ width = "80%"
 height = "80%"
 
 [[keys.command]]
-key = "prefix+alt+y"
+key = ["alt+y", "prefix+alt+y"]
 type = "popup"
 command = "claude"
 description = "Claude Code"
@@ -66,7 +66,7 @@ width = "80%"
 height = "80%"
 
 [[keys.command]]
-key = "prefix+alt+o"
+key = ["alt+o", "prefix+alt+o"]
 type = "popup"
 command = "opencode"
 description = "OpenCode"
@@ -74,9 +74,34 @@ width = "80%"
 height = "80%"
 
 [[keys.command]]
-key = "prefix+alt+x"
+key = ["alt+shift+x", "prefix+alt+x"]
 type = "popup"
 command = "codex"
 description = "Codex"
 width = "80%"
 height = "80%"
+
+# Agent workflow plugins: Kanban, project templates, actions and Telegram setup.
+[[keys.command]]
+key = ["alt+k", "prefix+alt+k"]
+type = "plugin_action"
+command = "herdr-kanban.open"
+description = "Kanban"
+
+[[keys.command]]
+key = ["alt+p", "prefix+alt+p"]
+type = "plugin_action"
+command = "cloudmanic.herdr-plus.projects"
+description = "Projects"
+
+[[keys.command]]
+key = ["alt+a", "prefix+alt+a"]
+type = "plugin_action"
+command = "cloudmanic.herdr-plus.quick-actions"
+description = "Quick Actions"
+
+[[keys.command]]
+key = ["alt+shift+t", "prefix+alt+t"]
+type = "plugin_action"
+command = "permgps.telegram-agents.setup"
+description = "Telegram setup"

@@ -1,0 +1,361 @@
+diff --git a/internal/adapters/telegram/gateway_send_test.go b/internal/adapters/telegram/gateway_send_test.go
+index 6ebca7a..1e22895 100644
+--- a/internal/adapters/telegram/gateway_send_test.go
++++ b/internal/adapters/telegram/gateway_send_test.go
+@@ -499,6 +499,32 @@ func TestSendMarkdownFallbackFailsOnce(t *testing.T) {
+ 	}
+ }
+ 
++func TestSendUnlimitedReplyKeepsTextAfterFiveParts(t *testing.T) {
++	h := newHarness(t)
++	n := 0
++	h.api.on("sendMessage", func(url.Values) apiReply {
++		n++
++		return okReply(map[string]any{"message_id": n})
++	})
++	text := strings.Repeat("reply 🌍 ", 4000) + "FINAL_ANSWER_END"
++	_, err := h.gw.Send(h.ctx, domain.Outgoing{ThreadID: 42, Text: text, Code: true})
++	if err != nil {
++		t.Fatal(err)
++	}
++	calls := h.api.callsOf("sendMessage")
++	if len(calls) <= 5 {
++		t.Fatalf("calls = %d, want more than five", len(calls))
++	}
++	var joined strings.Builder
++	for _, call := range calls {
++		body := call.form.Get("text")
++		joined.WriteString(strings.TrimSuffix(strings.TrimPrefix(body, "<pre>"), "</pre>"))
++	}
++	if joined.String() != text {
++		t.Fatal("reply content was lost while splitting messages")
++	}
++}
++
+ func TestSendMaxPartsTrailer(t *testing.T) {
+ 	h := newHarness(t)
+ 	n := 0
+diff --git a/internal/adapters/transcript/reader.go b/internal/adapters/transcript/reader.go
+index 3e6d51e..9b9f8f4 100644
+--- a/internal/adapters/transcript/reader.go
++++ b/internal/adapters/transcript/reader.go
+@@ -1,11 +1,7 @@
+-// Package transcript reads an agent's last reply from the session
+-// transcript the agent writes for itself, outside Herdr. Herdr 0.7.5 does
+-// not tell which session a pane runs, so the reader finds the transcript by
+-// the pane's working directory: Claude Code keeps one directory per
+-// project under ~/.claude/projects and one .jsonl per session, and the
+-// newest file is the session that just finished. Two Claude panes in the
+-// same directory cannot be told apart; that limitation is documented and
+-// the caller falls back to the screen whenever the reader is unsure.
++// Package transcript reads agents' replies from their session histories.
++// Claude Code keeps one project directory under ~/.claude/projects and
++// one .jsonl per session. The pane's reported session selects its file;
++// legacy panes without an identity use the newest file in that directory.
+ package transcript
+ 
+ import (
+@@ -41,6 +37,7 @@ type Reader struct {
+ 	now     func() time.Time
+ 	log     *slog.Logger
+ 	maxScan int64
++	session func(context.Context, string) (domain.SessionTuple, error)
+ }
+ 
+ // NewReader returns a reader over the current user's home directory.
+@@ -48,6 +45,14 @@ func NewReader(log *slog.Logger) *Reader {
+ 	return newReader(os.UserHomeDir, time.Now, log)
+ }
+ 
++// NewSessionReader selects the pane's exact Claude session when Herdr
++// reports an identity. Older sessionless panes retain the directory lookup.
++func NewSessionReader(session func(context.Context, string) (domain.SessionTuple, error), log *slog.Logger) *Reader {
++	r := NewReader(log)
++	r.session = session
++	return r
++}
++
+ // newReader takes the home and clock sources so tests can point the reader
+ // at a temporary directory.
+ func newReader(home func() (string, error), now func() time.Time, log *slog.Logger) *Reader {
+@@ -76,7 +81,7 @@ func (r *Reader) LastReply(ctx context.Context, agent domain.Agent) (domain.Repl
+ 		return domain.Reply{}, fmt.Errorf("%w: home directory: %v", domain.ErrNoReply, err)
+ 	}
+ 	dir := filepath.Join(append([]string{home}, append(projectsDir, projectSlug(agent.Cwd))...)...)
+-	path, modTime, candidates, err := newestTranscript(dir)
++	path, modTime, candidates, err := r.transcript(ctx, agent, dir)
+ 	if err != nil {
+ 		return domain.Reply{}, err
+ 	}
+@@ -102,6 +107,28 @@ func (r *Reader) LastReply(ctx context.Context, agent domain.Agent) (domain.Repl
+ 	return domain.Reply{Text: text, Source: path, Age: age, Written: modTime, Meta: meta}, nil
+ }
+ 
++func (r *Reader) transcript(ctx context.Context, agent domain.Agent, dir string) (string, time.Time, int, error) {
++	if r.session == nil || agent.SessionDigest == "" {
++		return newestTranscript(dir)
++	}
++	tuple, err := r.session(ctx, agent.PaneID)
++	if err != nil {
++		return "", time.Time{}, 0, classifySessionError(ctx, err, "claude session lookup failed")
++	}
++	if err := ctx.Err(); err != nil {
++		return "", time.Time{}, 0, err
++	}
++	if tuple.Agent != kindClaude || tuple.Kind != "id" || tuple.Digest() != agent.SessionDigest || !codexThreadID.MatchString(tuple.Value) {
++		return "", time.Time{}, 0, fmt.Errorf("%w: claude session identity unavailable or changed", domain.ErrNoReply)
++	}
++	path := filepath.Join(dir, tuple.Value+transcriptSuffix)
++	info, err := os.Lstat(path)
++	if err != nil || !info.Mode().IsRegular() {
++		return "", time.Time{}, 0, fmt.Errorf("%w: claude session transcript unavailable", domain.ErrNoReply)
++	}
++	return path, info.ModTime(), 1, nil
++}
++
+ // newestTranscript returns the most recently modified session file in dir
+ // and how many candidates there were.
+ func newestTranscript(dir string) (path string, modTime time.Time, candidates int, err error) {
+diff --git a/internal/adapters/transcript/tail.go b/internal/adapters/transcript/tail.go
+index 5633f1e..bf4347d 100644
+--- a/internal/adapters/transcript/tail.go
++++ b/internal/adapters/transcript/tail.go
+@@ -43,6 +43,7 @@ type record struct {
+ 	Timestamp   string `json:"timestamp"`
+ 	RequestID   string `json:"requestId"`
+ 	Message     struct {
++		ID      string          `json:"id"`
+ 		Model   string          `json:"model"`
+ 		Content json.RawMessage `json:"content"`
+ 		Usage   struct {
+@@ -174,8 +175,8 @@ func editedPaths(raw json.RawMessage) []string {
+ }
+ 
+ // lastReplyIn walks the transcript backwards, newest line first, and
+-// returns the first non-empty text part of an assistant record met before
+-// the operator's last prompt, together with what the records of that turn
++// returns all text blocks of the newest assistant message before the
++// operator's last prompt, together with what the records of that turn
+ // say about it (turnStats). A prompt is a user record that is not meta
+ // and carries no tool_result; tool results are user records too, so they
+ // do not end the scan. Sidechain (subagent) records are skipped. The walk
+@@ -207,6 +208,7 @@ func lastReplyFrom(f io.ReaderAt, size, budget int64) (string, turnStats, scanSt
+ 	var turn turnStats
+ 	var found string
+ 	var haveText bool
++	var messageID, requestID string
+ 	visit := func(line []byte) error {
+ 		stats.lines++
+ 		line = bytes.TrimSpace(line)
+@@ -233,11 +235,15 @@ func lastReplyFrom(f io.ReaderAt, size, budget int64) (string, turnStats, scanSt
+ 			}
+ 		case "assistant":
+ 			turn.absorb(rec)
+-			if haveText {
+-				return nil
+-			}
+ 			if text, ok := lastText(rec.Message.Content); ok {
+-				found, haveText = text, true
++				if !haveText {
++					found, haveText = text, true
++					messageID, requestID = rec.Message.ID, rec.RequestID
++				} else if messageID != "" && rec.Message.ID == messageID || messageID == "" && requestID != "" && rec.RequestID == requestID {
++					// A final API response can span several transcript records.
++					// Keep its blocks in order without including earlier tool narration.
++					found = text + "\n\n" + found
++				}
+ 			}
+ 		}
+ 		return nil
+@@ -286,8 +292,8 @@ func isPrompt(rec record) bool {
+ 	return true
+ }
+ 
+-// lastText returns the last non-empty text part of an assistant content
+-// list, trimmed; a plain string content counts as one text part.
++// lastText returns all non-empty text parts of an assistant content list
++// in order; a plain string content counts as one text part.
+ func lastText(raw json.RawMessage) (string, bool) {
+ 	raw = bytes.TrimSpace(raw)
+ 	if len(raw) == 0 {
+@@ -308,15 +314,16 @@ func lastText(raw json.RawMessage) (string, bool) {
+ 	if err := json.Unmarshal(raw, &parts); err != nil {
+ 		return "", false
+ 	}
+-	for i := len(parts) - 1; i >= 0; i-- {
+-		if parts[i].Type != "text" {
++	var texts []string
++	for _, part := range parts {
++		if part.Type != "text" {
+ 			continue
+ 		}
+-		if text := strings.TrimSpace(parts[i].Text); text != "" {
+-			return text, true
++		if text := strings.TrimSpace(part.Text); text != "" {
++			texts = append(texts, text)
+ 		}
+ 	}
+-	return "", false
++	return strings.Join(texts, "\n\n"), len(texts) > 0
+ }
+ 
+ // walkBack reads f from its end in blocks and calls visit for every
+diff --git a/internal/app/consts.go b/internal/app/consts.go
+index d7623fa..b663944 100644
+--- a/internal/app/consts.go
++++ b/internal/app/consts.go
+@@ -23,9 +23,9 @@ const (
+ 	blockedLines = 25
+ 	// doneLines is the shorter tail posted on done.
+ 	doneLines = 12
+-	// replyMaxParts caps a done post taken from the transcript: a reply
+-	// longer than this many messages is cut with a trailer.
+-	replyMaxParts = 5
++	// A transcript reply may span any number of Telegram messages. Zero
++	// disables the gateway's part cap so the final answer is preserved.
++	replyMaxParts = 0
+ 	// replyPendingRetries and replyPendingDelay bound the wait for a done
+ 	// post whose reply source says the turn is still running (OpenCode
+ 	// reports done at every step of a turn): the post is fired again up to
+diff --git a/internal/app/outbound_test.go b/internal/app/outbound_test.go
+index 661471a..1e31cc1 100644
+--- a/internal/app/outbound_test.go
++++ b/internal/app/outbound_test.go
+@@ -1036,6 +1036,28 @@ func TestOutboundCatchUpRules(t *testing.T) {
+ 	}
+ }
+ 
++func TestOutboundLongRepliesDoNotUseScreenOrPartCap(t *testing.T) {
++	for _, kind := range []string{"opencode", "claude", "codex"} {
++		t.Run(kind, func(t *testing.T) {
++			f := newBridgeFixture(t)
++			a := f.add(t, "p1", "t1", "reviewer", domain.StatusWorking)
++			a.Kind = kind
++			f.agents[a.Key] = a
++			text := strings.Repeat("Full answer line.\n", 2000) + "FINAL_ANSWER_END"
++			f.replies.Set(a.Key, text)
++			f.out.Observe(AgentEvent{Kind: AgentChanged, Agent: f.setStatus(a, domain.StatusDone)})
++			f.fire(t, 1)
++			sent := f.tg.Sent()
++			if len(sent) != 1 || sent[0].Text != text || sent[0].MaxParts != 0 {
++				t.Fatal("long final answer was replaced or capped")
++			}
++			if len(f.herdr.Reads()) != 0 {
++				t.Fatal("a readable reply fell back to the terminal screen")
++			}
++		})
++	}
++}
++
+ func TestOutboundDoneModes(t *testing.T) {
+ 	for _, tc := range []struct {
+ 		mode     domain.DoneMode
+diff --git a/internal/compose/container.go b/internal/compose/container.go
+index b322056..405a368 100644
+--- a/internal/compose/container.go
++++ b/internal/compose/container.go
+@@ -300,7 +300,7 @@ func BuildSupervisor(env PluginEnv, log *slog.Logger) *Supervisor {
+ }
+ 
+ // replySources is the reader chain behind done posts and /screen: Claude
+-// Code transcripts by working directory, then the exact-session OpenCode
++// Code transcripts by session (or legacy working directory), then the exact-session OpenCode
+ // export, Codex rollout, Antigravity transcript and pi session file, then
+ // the Muse session log of the pane's process (processes lists the pane's
+ // pids, started reports when a pid's process started). Each reader rejects
+@@ -311,7 +311,7 @@ func replySources(session func(context.Context, string) (domain.SessionTuple, er
+ 	processes func(context.Context, string) ([]int, error), started func(int) (time.Time, bool),
+ 	log *slog.Logger) domain.MultiReplySource {
+ 	return domain.MultiReplySource{
+-		transcript.NewReader(log),
++		transcript.NewSessionReader(session, log),
+ 		transcript.NewOpenCodeReader(session, openCodeExport, log),
+ 		transcript.NewCodexReader(session, log),
+ 		transcript.NewAgyReader(session, log),
+diff --git a/internal/adapters/transcript/claude_session_test.go b/internal/adapters/transcript/claude_session_test.go
+new file mode 100644
+--- /dev/null
++++ b/internal/adapters/transcript/claude_session_test.go
+@@ -0,0 +1,82 @@
++package transcript
++
++import (
++	"context"
++	"errors"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++func TestClaudeExactSessionIgnoresNewerSibling(t *testing.T) {
++	home := t.TempDir()
++	cwd := "/project"
++	tuple := domain.SessionTuple{Source: "herdr:claude", Agent: "claude", Kind: "id", Value: "12345678-1234-4234-8234-123456789abc"}
++	agent := domain.Agent{Key: domain.Key{PaneID: "p1", SessionDigest: tuple.Digest()}, Kind: "claude", Cwd: cwd}
++	r := newReader(func() (string, error) { return home, nil }, time.Now, nil)
++	r.session = func(context.Context, string) (domain.SessionTuple, error) { return tuple, nil }
++	dir := filepath.Join(home, ".claude", "projects", projectSlug(cwd))
++	if err := os.MkdirAll(dir, 0o700); err != nil {
++		t.Fatal(err)
++	}
++	path := filepath.Join(dir, tuple.Value+".jsonl")
++	if err := os.WriteFile(path, []byte("{\"type\":\"user\",\"message\":{\"content\":\"go\"}}\n{\"type\":\"assistant\",\"message\":{\"content\":\"Own full answer\"}}\n"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	sibling := filepath.Join(dir, "other.jsonl")
++	if err := os.WriteFile(sibling, []byte("{\"type\":\"user\",\"message\":{\"content\":\"unfinished sibling\"}}\n"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	future := time.Now().Add(time.Hour)
++	if err := os.Chtimes(sibling, future, future); err != nil {
++		t.Fatal(err)
++	}
++	reply, err := r.LastReply(context.Background(), agent)
++	if err != nil || reply.Text != "Own full answer" {
++		t.Fatalf("exact reply = %q, %v", reply.Text, err)
++	}
++	t.Run("changed session", func(t *testing.T) {
++		changed := agent
++		changed.SessionDigest = "different"
++		if _, err := r.LastReply(context.Background(), changed); !errors.Is(err, domain.ErrNoReply) {
++			t.Fatalf("changed identity = %v", err)
++		}
++	})
++	t.Run("missing exact file", func(t *testing.T) {
++		if err := os.Remove(path); err != nil {
++			t.Fatal(err)
++		}
++		if _, err := r.LastReply(context.Background(), agent); !errors.Is(err, domain.ErrNoReply) {
++			t.Fatalf("missing transcript = %v", err)
++		}
++	})
++}
++
++func TestClaudeFinalMessageKeepsAllTextBlocks(t *testing.T) {
++	for _, identity := range []string{`"requestId":"final",`, `"messageID":"final",`} {
++		t.Run(identity, func(t *testing.T) {
++			request, message := `"requestId":"final",`, ""
++			if strings.HasPrefix(identity, `"messageID"`) {
++				request, message = "", `"id":"final",`
++			}
++			lines := []string{
++				`{"type":"user","message":{"content":"go"}}`,
++				`{"type":"assistant","requestId":"progress","message":{"id":"progress","content":[{"type":"text","text":"Earlier progress"}]}}`,
++				`{"type":"assistant",` + request + `"message":{` + message + `"content":[{"type":"text","text":"Answer begins"},{"type":"thinking","thinking":"private"},{"type":"text","text":"Answer middle"}]}}`,
++				`{"type":"assistant",` + request + `"message":{` + message + `"content":[{"type":"text","text":"Answer ends"}]}}`,
++			}
++			path := filepath.Join(t.TempDir(), "session.jsonl")
++			if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
++				t.Fatal(err)
++			}
++			text, _, _, err := lastReplyIn(path, defaultMaxScan)
++			if err != nil || text != "Answer begins\n\nAnswer middle\n\nAnswer ends" {
++				t.Fatalf("complete answer = %q, %v", text, err)
++			}
++		})
++	}
++}

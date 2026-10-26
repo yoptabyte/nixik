@@ -1,6 +1,8 @@
 -- XPS 15: use the LG ultrawide when connected, otherwise use the laptop panel.
 local internal = {
   output = "eDP-1",
+  -- hl.monitor merges rules: explicitly clear the previous disabled state.
+  disabled = false,
   mode = "1920x1200@59.95",
   position = "0x0",
   scale = 1.5,

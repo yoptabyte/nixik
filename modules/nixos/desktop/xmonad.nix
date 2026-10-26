@@ -5,7 +5,7 @@ let
   });
   session = pkgs.writeShellApplication {
     name = "xmonad-session";
-    runtimeInputs = with pkgs; [ python3 xrandr xmobar trayer picom snixembed procps ];
+    runtimeInputs = with pkgs; [ python3 xrandr xmobar stalonetray picom snixembed procps ];
     text = ''
       exec python3 ${../../home/files/xmonad/session.py} ${lib.optionalString (config.networking.hostName == "xps15") "--prefer-dp-1"}
     '';
@@ -40,7 +40,7 @@ in
   } ];
   environment.localBinInPath = true;
   environment.systemPackages = with pkgs; [
-    xmobar dmenu customSt xclip scrot trayer feh xsecurelock picom snixembed
+    xmobar dmenu customSt xclip scrot stalonetray feh xsecurelock picom snixembed
   ];
   hjem.users.yoptabyte.files = {
     ".xmonad/xmonad.hs".source = ../../home/files/xmonad/xmonad.hs;

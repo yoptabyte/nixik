@@ -63,6 +63,8 @@
       { mode = "n"; key = "<leader>bn"; action = "<cmd>bnext<CR>"; options = { desc = "Next buffer"; }; }
       { mode = "n"; key = "<leader>bp"; action = "<cmd>bprevious<CR>"; options = { desc = "Previous buffer"; }; }
       { mode = "n"; key = "<leader>bi"; action = ":buffer "; options = { desc = "Go to buffer by number or name"; }; }
+      { mode = "n"; key = "<leader>bc"; action = "<cmd>bdelete<CR>"; options = { desc = "Close current buffer"; }; }
+      { mode = "n"; key = "<leader>bd"; action = ":bdelete "; options = { desc = "Close buffer by number or name"; }; }
       { mode = "n"; key = "<S-l>"; action = ":bnext<CR>";     options = { desc = "Next buffer"; }; }
       { mode = "n"; key = "<S-h>"; action = ":bprevious<CR>"; options = { desc = "Previous buffer"; }; }
       # Move text
@@ -143,7 +145,21 @@
         };
       };
 
-      render-markdown.enable = true;
+      render-markdown = {
+        enable = true;
+        settings = {
+          # Keep the rendered view on the cursor line; edit and select raw Markdown.
+          render_modes = [ "n" "c" "t" ];
+          anti_conceal.enabled = false;
+          win_options = {
+            concealcursor.rendered = "nc";
+            list = {
+              default.__raw = "vim.o.list";
+              rendered = false;
+            };
+          };
+        };
+      };
 
       smear-cursor = {
         enable = true;
@@ -341,7 +357,19 @@
           nil_ls.enable   = true;
           lua_ls.enable   = true;
           pyright.enable  = true;
-          ts_ls.enable    = true;
+          ts_ls = {
+            enable = true;
+            package = pkgs.typescript-language-server.overrideAttrs (old:
+              lib.optionalAttrs (
+                old.version == "6.0.2"
+                && old.pnpmDeps.outputHash == "sha256-MUSxDMlbG21KSesGdEvqa2kEpuVfLlXRUX1qV/FGsSo="
+              ) {
+                # Correct the pnpm dependency hash in the pinned nixpkgs recipe.
+                pnpmDeps = old.pnpmDeps.override {
+                  hash = "sha256-xR/EF60lVBsITKgH7wCM2wHM46PFQevD51KfCENSUH4=";
+                };
+              });
+          };
           gopls.enable    = true;
           html.enable     = true;
           cssls.enable    = true;
@@ -451,7 +479,7 @@
       comment = {
         enable = true;
         settings = {
-          toggler  = { line = "<leader>/"; block = "<leader>bc"; };
+          toggler  = { line = "<leader>/"; block = "gbc"; };
           opleader = { line = "<leader>/"; block = "<leader>B"; };
         };
       };

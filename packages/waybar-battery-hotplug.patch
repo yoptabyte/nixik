@@ -1,0 +1,22 @@
+--- a/src/modules/battery.cpp
++++ b/src/modules/battery.cpp
+@@ -139,7 +139,9 @@ void waybar::modules::Battery::refreshBatteries() {
+             auto event_path = (node.path() / "uevent");
+             auto wd = inotify_add_watch(battery_watch_fd_, event_path.c_str(), IN_ACCESS);
+             if (wd < 0) {
+-              throw std::runtime_error("Could not watch events for " + node.path().string());
++              spdlog::warn("Could not watch events for {} (device may have been removed)",
++                           node.path().string());
++              continue;
+             }
+             batteries_[node.path()] = wd;
+           }
+@@ -154,7 +156,7 @@ void waybar::modules::Battery::refreshBatteries() {
+       }
+     }
+   } catch (fs::filesystem_error& e) {
+-    throw std::runtime_error(e.what());
++    spdlog::warn("Battery directory tracking failed: {}", e.what());
+   }
+   if (warnFirstTime_ && batteries_.empty()) {
+     if (config_["bat"].isString()) {

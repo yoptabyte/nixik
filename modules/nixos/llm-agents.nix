@@ -4,7 +4,6 @@
   # into ~/.npm-global (see `npm config set prefix "$HOME/.npm-global"`).
   environment.systemPackages = [
     pkgs.nodejs_22
-    pkgs.ollama
   ];
 
   # Keep npm global packages out of the Nix store.  This also avoids relying on
@@ -18,7 +17,7 @@
   # npm global binaries are exposed through Nushell's ~/.npm-global/bin PATH entry.
   environment.localBinInPath = true;
 
-  # Ollama system service (local LLMs)
+  # Ollama system service (local LLMs); the module also installs the CLI.
   services.ollama = {
     enable = true;
   };

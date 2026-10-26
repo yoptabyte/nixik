@@ -22,7 +22,7 @@ installed through Homebrew.
 The **Dell XPS 15 9550** (`hosts/xps15_9550/`):
 
 - **CPU**: Intel Core i7-6700HQ
-- **GPU**: Intel HD Graphics 530 + NVIDIA GeForce GTX 960M (PRIME offload)
+- **GPU**: Intel HD Graphics 530 + NVIDIA GeForce GTX 1050 Mobile
 - **Display**: 15.6" 4K touchscreen
 - **RAM**: 16 GB DDR4
 
@@ -68,7 +68,10 @@ nixos-config/
 - **Vicinae** on Super+D and **dmenu** on Super+P or Super+Shift+D in both window managers
 - **Hyprexpo** workspace overview on Super+G; **Phantomat** canvas on Super+Ctrl+G and canvas overview on Super+Ctrl+Shift+G
 - Hyprland screenshots: Print copies a selected area to the clipboard; Super+Print saves it under `~/Pictures/`
-- **Voxtype** dictation: Super+Ctrl+X to toggle, F9 to hold and speak; the multilingual model downloads when its Hyprland service first starts
+- **Voxtype** dictation: Super+Ctrl+X to toggle, F9 to hold and speak; the multilingual Whisper `large-v3-turbo` model downloads when its Hyprland service first starts and runs with Vulkan GPU acceleration
+- Voxtype uses Flash Attention; NVIDIA PRIME hosts select the NVIDIA Vulkan driver explicitly so recognition does not run on the integrated Intel GPU
+- Voxtype inserts text through the clipboard with Shift+Insert and restores the previous clipboard; this avoids garbled Cyrillic from simulated character typing
+- Waybar shows an 18px microphone for Voxtype readiness, a pulsing red **● Recording** while recording, and a yellow **Transcribing…** indicator while transcribing; both dictation shortcuts use the same indicator
 
 ### Terminal & Shell
 - **Ghostty** — GPU-accelerated terminal using Gruvbox Light
@@ -114,6 +117,89 @@ grouped by application. Desktop image assets live in `wallpapers/`.
 - **systemd-boot** keeps the five most recent generations in the EFI partition
 - **LLM tools** on Linux: Node.js 22, nix-ld and Ollama; agent CLIs are installed separately with npm into `~/.npm-global`
 
+### Meeting recording
+
+Linux includes [Tapeback](https://github.com/yastcher/tapeback) 0.10.1, packaged
+locally with transcription, a tray icon and LLM provider dependencies. Launch
+**Tapeback** from the application menu or run `tapeback tray`; recording starts
+only when requested. From a terminal, use `tapeback start` and Ctrl+C to stop.
+Notes go to `~/ZVOnki/meetings/` and audio recordings to
+`~/ZVOnki/attachments/audio/`. The multilingual Whisper model downloads on the
+first transcription.
+
+The session defaults to Russian (`TAPEBACK_LANGUAGE=ru`) and CPU inference
+(`TAPEBACK_DEVICE=cpu`), including on machines with NVIDIA. Log in again after
+rebuilding to load these defaults. Override the language for one recording with
+`TAPEBACK_LANGUAGE=auto tapeback start` or `TAPEBACK_LANGUAGE=en tapeback start`.
+
+`tapeback setup --no-diarize --no-summarize` disables the optional stages.
+Speaker diarization dependencies (pyannote/PyTorch) are not bundled. To enable
+summaries, configure a provider and its key in `~/.config/tapeback/.env`, then
+run `tapeback setup --summarize`. Summaries use the meeting's language; cloud
+providers receive the transcript. Keep credentials in that local file. Change
+`TAPEBACK_VAULT_PATH` in `modules/nixos/productivity.nix` to use another directory
+or an Obsidian vault. Session environment variables take precedence over the file.
+
+### Herdr Telegram replies
+
+`packages/herdr-telegram-agents.nix` pins Telegram Agents 0.17.4 to an exact
+commit and dependency hashes. `packages/herdr-telegram-full-replies.patch`
+preserves complete replies, including multi-part Claude messages. The package
+includes SQLite and installs agent hooks with Python supplied by `nix shell`.
+Agents that have not been initialized are skipped; rerun the integration helper
+after installing and starting Claude Code for the first time.
+
+In an active agent's Telegram topic, `/git diff remote` includes local commits,
+staged/unstaged edits and new non-ignored files since the merge base with its
+upstream (or `origin/HEAD` for detached HEAD/Jujutsu). It uses the tracking
+reference from the last `git fetch` and leaves
+the real index unchanged. Long output arrives as a `.patch` file. Plain
+`/git diff` still shows tracked, uncommitted changes against `HEAD`.
+
+Append `md` to any diff command to always receive a Markdown file:
+`/git diff remote md` (all local changes since the remote merge base),
+`/git diff md` (tracked uncommitted edits), or `/git diff staged md`.
+Short and empty diffs also arrive as `.md` documents with a fenced diff block.
+
+`/git files` lists local tracked and non-ignored new files; `/git files src`
+narrows the list to a directory. `/git file src/example.py` sends the current
+local file as `example.py.md`, including uncommitted edits, without a push.
+Paths are relative to the repository root; type spaces without quotes.
+Symlinks, binary files, Git metadata and paths outside the repository are
+excluded. Files and diffs have a 5 MB cap; partial views are explicitly marked.
+
+To answer a queued Codex question, send `/keys shift+left`, then `/screen`.
+Choose with `/keys up` or `/keys down` and confirm with `/keys enter`.
+
+The Linux desktop enables `modules/nixos/herdr-telegram.nix`. Its user service
+registers the package as a **local** Herdr plugin, so `herdr plugin update`
+cannot replace it. To build and register it without rebuilding the system:
+
+```bash
+nix-build packages/herdr-telegram-bundle.nix -A telegram -o result-herdr-telegram
+./result-herdr-telegram/bin/herdr-agent-integrations --herdr "$(command -v herdr)"
+herdr plugin link "$(readlink -f result-herdr-telegram)/share/herdr/plugins/permgps.telegram-agents"
+herdr plugin action invoke permgps.telegram-agents.restart
+```
+
+Update the source revision and hashes in the package recipe deliberately;
+Nix reapplies the patch and runs reply-delivery tests before installation.
+Keep Telegram bot tokens and group settings in each machine's existing private
+Herdr plugin configuration. Separate machines need separate Telegram bots.
+
+`packages/herdr-telegram-bundle.nix` also exposes the matching `herdr` package
+for another NixOS host. Import `modules/nixos/herdr-telegram.nix`, enable
+`programs.herdr-telegram`, set `users`, and enable `server.enable` for a
+persistent headless server. The source bundle on `forgejo-laptop` lives under
+`~/nixos/herdr-telegram`; its Telegram bot is configured separately.
+
+Connect to that server's Herdr with
+`ssh -t forgejo-laptop '~/.nix-profile/bin/herdr'`, then run
+`herdr plugin action invoke permgps.telegram-agents.setup` inside a Herdr pane.
+Enter the server bot's token in the setup popup and select its forum group.
+The bootstrap user services keep running after SSH disconnects; the NixOS
+module takes over their marked unit links on the next system switch.
+
 ## Quick Start
 
 ### Enter dev shell
@@ -147,6 +233,27 @@ sudo nixos-rebuild switch \
 
 ## Build troubleshooting
 
+### Unavailable CachyOS binary cache
+
+The lantian cache was shut down after a server compromise; see the
+[upstream notice](https://github.com/xddxdd/nix-cachyos-kernel/issues/110).
+This configuration no longer adds that cache or trusts its signing key.
+Until you rebuild and activate the updated configuration, `/etc/nix/nix.conf`
+still includes the old cache. Override the complete substituter list to enter
+the development shell:
+
+```bash
+nix-shell --option substituters 'https://cache.nixos.org/ https://nix-community.cachix.org https://yoptanix.cachix.org'
+```
+
+Use the same override when rebuilding (replace `xps15` with your host):
+
+```bash
+sudo nixos-rebuild switch \
+  --file nilla.nix --attr 'systems.nixos."xps15".result' \
+  --option substituters 'https://cache.nixos.org/ https://nix-community.cachix.org https://yoptanix.cachix.org'
+```
+
 ### Fonts
 
 [Comic True Mono](https://github.com/CptIdea/ComicTrueMono) with Nerd Font icons
@@ -178,6 +285,21 @@ Lazarus dependency fails during installation.
 
 Build phases (`fixupPhase`, `patchPhase`, etc.) and compiler warnings are normal
 build output. A failed derivation is reported with `error: Cannot build`.
+
+Godot 4.7 needs `harfbuzz-vector` in addition to HarfBuzz's raster and ICU
+libraries. The local `packages/godot.nix` override enables vector support only
+for Godot's dependency, fixing `No package 'harfbuzz-vector' found` with the
+pinned nixpkgs recipe.
+
+The ChatGPT desktop package adds `tpm2-tss` to its build inputs so
+`autoPatchelfHook` can resolve the `libtss2-*` dependencies of the bundled
+`remote-control-device-key.node` module.
+
+Audacity 4.0 uses the local `packages/audacity.nix` override to disable unity
+compilation for `muse_extensions_qml`. With Qt 6.12, combining its generated
+QML and moc sources makes `Type` ambiguous. Compiling them separately keeps
+QML caching enabled and avoids the name collision.
+
 The local Herdr package builds the vendored Ghostty library with the LLVM
 backend and uses GCC's compiler runtime instead of Zig's bundled runtime,
 avoiding invalid ELF unwind data and runtime symbols (`.eh_frame_hdr refers to overlapping FDEs`). The rectangular selection patch is retained.
@@ -195,10 +317,21 @@ The shared kernel default is in `modules/nixos/laptop.nix`. Hosts importing
 `modules/nixos/gaming.nix` use CachyOS BORE instead; currently this is `xps15`.
 The kernel is pinned through npins to the `release` branch of
 [nix-cachyos-kernel](https://github.com/xddxdd/nix-cachyos-kernel/tree/release),
-using its original nixpkgs for the cached kernel and the system's nixpkgs for
+using its original nixpkgs for the kernel and the system's nixpkgs for
 external modules such as NVIDIA. The generic x86-64 build avoids requiring AVX
 or LTO support from external modules. Update it with
 `npins update nix-cachyos-kernel`.
+
+The local module aggregation override supports the pinned kernel's older
+packaging, which has no `modules.cer`. It skips certificate aggregation only
+for the matching kernel version when its built configuration explicitly has
+`CONFIG_MODULE_SIG` disabled. Module dependency generation still runs; kernels
+with signing enabled retain nixpkgs' certificate checks.
+
+The upstream binary cache is disabled following its server compromise. CachyOS
+remains selected, so missing kernel outputs may require a lengthy local build.
+The cache override under Build troubleshooting bypasses the old daemon settings
+until the updated configuration is activated.
 
 A rebuild does not format disks. The new kernel takes effect after reboot.
 
@@ -269,16 +402,6 @@ and frame limit to the game/display):
 
 ```text
 game-run gamescope -w 1280 -h 720 -W 1920 -H 1080 -r 60 -f -- %command%
-```
-
-For the first rebuild, supply the kernel cache explicitly because the new Nix
-daemon settings only take effect after activation:
-
-```bash
-sudo nixos-rebuild boot \
-  --file nilla.nix --attr 'systems.nixos."xps15".result' \
-  --option extra-substituters https://attic.xuyh0120.win/lantian \
-  --option extra-trusted-public-keys 'lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc='
 ```
 
 Reboot to use the kernel. Previous generations remain selectable in systemd-boot.

@@ -2,38 +2,42 @@
 
 with pkgs; [
   # Git tools
+  gh
   lazygit
-  lazydocker
   jujutsu
+  forgejo-cli
+
+  #TUI
+  lazydocker
 
   # Useful CLI tools
-  ripgrep
   fd
   fzf
   bat
   eza
   btop
   yazi
-  zoxide
   fetch
+  zoxide
+  ripgrep
   onefetch
 
   # Archive tools
   zip
+  unar
+  zstd
   unzip
   p7zip
   ripunzip
-  unar
-  zstd
 
   # Binary cache push
   cachix
 
   # Shell & prompt
-  nushell
-  starship
   tmux
   delta
+  nushell
+  starship
 ] ++ lib.optionals stdenv.hostPlatform.isLinux [
   # Darwin installs these applications through Homebrew.
   vlc

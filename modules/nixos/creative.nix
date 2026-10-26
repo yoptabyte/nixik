@@ -7,9 +7,6 @@
     # 3D editor
     blender
 
-    # Audio editor
-    audacity
-
     # Image editor
     krita
 

@@ -1,14 +1,21 @@
 { config, lib, pkgs, inputs, ... }:
 let
-  # Opinionated-Nix is pinned in npins. Use its Hyprland look and feel and
-  # Gruvbox artwork; adapt the rest to Hjem/Ly and the existing XMonad setup.
   omarchy = inputs.opinionated-nix.src;
-  lockWallpaper = omarchy + "/config/themes/gruvbox/backgrounds/3-village-square.jpg";
+  # Hyprlock uses a still frame from the animated desktop wallpaper.
+  lockWallpaper = ../../../wallpapers/garden_rain.jpg;
   inherit (import ../../../packages/hyprland-plugins.nix { inherit pkgs lib inputs; }) hyprexpo phantomat;
   herdrVisualBlock = pkgs.callPackage ../../../packages/herdr.nix {};
+  waybarStable = pkgs.callPackage ../../../packages/waybar.nix {};
 
 in
 {
+  imports = [ ../herdr-telegram.nix ];
+  programs.herdr-telegram = {
+    enable = true;
+    herdrPackage = herdrVisualBlock;
+    users = [ "yoptabyte" ];
+  };
+
   programs.hyprland = {
     enable = true;
     withUWSM = true;
@@ -35,17 +42,35 @@ in
 
   environment.systemPackages = with pkgs; [
     awww hypridle hyprlock hyprpolkitagent
-    waybar mako herdrVisualBlock voxtype-vulkan hyprexpo phantomat
+    waybarStable mako herdrVisualBlock voxtype-vulkan hyprexpo phantomat
     wl-clipboard grim slurp brightnessctl libnotify pavucontrol
   ];
+
+  systemd.user.services.waybar = {
+    description = "Waybar for Hyprland";
+    after = [ "graphical-session.target" ];
+    requisite = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      ExecStart = lib.getExe waybarStable;
+      ExecReload = "${pkgs.coreutils}/bin/kill -SIGUSR2 $MAINPID";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+  };
 
   systemd.user.services.voxtype = {
     description = "Voxtype dictation daemon for Hyprland";
     after = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     path = [ pkgs.curl ];
+    # Hybrid laptops enumerate Intel first. Restrict this service's Vulkan loader
+    # to NVIDIA; Voxtype's vendor selector is not applied by its daemon command.
+    environment = lib.optionalAttrs (config.hardware.nvidia.prime.offload.enable or false) {
+      VK_DRIVER_FILES = "/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.json";
+    };
     serviceConfig = {
-      ExecStartPre = "${lib.getExe pkgs.voxtype-vulkan} setup --download --model base";
+      ExecStartPre = "${lib.getExe pkgs.voxtype-vulkan} setup --download --model large-v3-turbo";
       ExecStart = "${lib.getExe pkgs.voxtype-vulkan} daemon";
       Restart = "on-failure";
       RestartSec = 60;
@@ -53,6 +78,12 @@ in
   };
 
   hjem.users.yoptabyte.files = {
+    # Avoid DMA-BUF negotiation failures when sharing on hybrid Intel/NVIDIA GPUs.
+    ".config/hypr/xdph.conf".text = ''
+      screencopy {
+        force_shm = true
+      }
+    '';
     ".config/hypr/hyprland.lua".text = ''
       hl.permission({ binary = [[${lib.escapeRegex "${hyprexpo}/lib/libhyprexpo.so"}]], type = "plugin", mode = "allow" })
       hl.permission({ binary = [[${lib.escapeRegex "${phantomat}/lib/libspatialoverview.so"}]], type = "plugin", mode = "allow" })

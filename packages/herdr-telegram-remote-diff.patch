@@ -1,0 +1,446 @@
+diff --git a/internal/domain/command.go b/internal/domain/command.go
+--- a/internal/domain/command.go
++++ b/internal/domain/command.go
+@@ -356,7 +356,7 @@
+ )
+ 
+ // GitUsage is the reply to a /git shape outside the allow-list.
+-const GitUsage = "usage: /git status | diff [staged] | log [N]"
++const GitUsage = "usage: /git status | diff [staged|remote] | log [N]"
+ 
+ // ParseGit maps the words after /git to a GitSpec: "status" → git status
+ // --short --branch; "diff" → git diff HEAD; "diff staged" → git diff
+@@ -378,6 +378,8 @@
+ 			return GitSpec{Sub: "diff", Args: []string{"diff", "HEAD"}}, true
+ 		case len(args) == 2 && strings.EqualFold(args[1], "staged"):
+ 			return GitSpec{Sub: "diff", Args: []string{"diff", "--cached"}}, true
++		case len(args) == 2 && strings.EqualFold(args[1], "remote"):
++			return GitSpec{Sub: "diff", Args: []string{"diff", "--merge-base", "@{upstream}", "--"}}, true
+ 		}
+ 	case "log":
+ 		n := GitLogDefault
+diff --git a/internal/domain/git_remote_test.go b/internal/domain/git_remote_test.go
+--- /dev/null
++++ b/internal/domain/git_remote_test.go
+@@ -0,0 +1,20 @@
++package domain_test
++
++import (
++	"reflect"
++	"testing"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++func TestParseGitRemote(t *testing.T) {
++	spec, ok := domain.ParseGit([]string{"diff", "remote"})
++	if !ok || spec.Sub != "diff" || !reflect.DeepEqual(spec.Args, []string{"diff", "--merge-base", "@{upstream}", "--"}) {
++		t.Fatalf("remote diff = %+v, %v", spec, ok)
++	}
++	for _, args := range [][]string{{"diff", "remote", "--fetch"}, {"diff", "origin/main"}, {"diff", "remote", "/tmp/file"}} {
++		if _, ok := domain.ParseGit(args); ok {
++			t.Fatalf("accepted arbitrary arguments: %v", args)
++		}
++	}
++}
+diff --git a/internal/adapters/system/git.go b/internal/adapters/system/git.go
+--- a/internal/adapters/system/git.go
++++ b/internal/adapters/system/git.go
+@@ -159,6 +159,9 @@
+ 
+ // Run implements domain.GitRunner.
+ func (r *GitRunner) Run(ctx context.Context, dir string, args []string) (domain.GitResult, error) {
++	if len(args) == 4 && args[0] == "diff" && args[1] == "--merge-base" && args[2] == "@{upstream}" && args[3] == "--" {
++		return r.remoteDiff(ctx, dir)
++	}
+ 	bin, err := exec.LookPath(r.bin)
+ 	if err != nil {
+ 		r.log.Warn("git binary not found", slog.String("bin", r.bin), slog.String("err", err.Error()))
+@@ -213,7 +216,7 @@
+ 	cmd := command(ctx, bin, argv...)
+ 	cmd.Dir = dir
+ 	cmd.WaitDelay = gitWaitDelay
+-	cmd.Env = append(withoutEnv(os.Environ(), "GIT_EXTERNAL_DIFF"), "GIT_PAGER=cat", "GIT_TERMINAL_PROMPT=0", "LC_ALL=C")
++	cmd.Env = append(withoutEnv(os.Environ(), "GIT_EXTERNAL_DIFF", "GIT_OPTIONAL_LOCKS"), "GIT_PAGER=cat", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0", "LC_ALL=C")
+ 	return cmd
+ }
+ 
+diff --git a/internal/adapters/system/git_remote.go b/internal/adapters/system/git_remote.go
+--- /dev/null
++++ b/internal/adapters/system/git_remote.go
+@@ -0,0 +1,117 @@
++package system
++
++import (
++	"bytes"
++	"context"
++	"errors"
++	"fmt"
++	"os"
++	"os/exec"
++	"strings"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++// remoteDiff reads the local side of the upstream merge base, then appends
++// patches for untracked, non-ignored files. It never stages files, writes
++// objects, fetches, or enters nested repositories.
++func (r *GitRunner) remoteDiff(ctx context.Context, dir string) (domain.GitResult, error) {
++	bin, err := exec.LookPath(r.bin)
++	if err != nil {
++		return domain.GitResult{}, domain.ErrGitMissing
++	}
++	ctx, cancel := context.WithTimeout(ctx, r.timeout)
++	defer cancel()
++	filters, err := r.filters(ctx, bin, dir)
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	query := func(where string, args []string, limit int, difference bool) ([]byte, bool, error) {
++		cmd := r.command(ctx, bin, where, gitArgv(args, filters))
++		stdout := &limitedWriter{max: limit}
++		var stderr bytes.Buffer
++		cmd.Stdout, cmd.Stderr = stdout, &stderr
++		err := cmd.Run()
++		if ctx.Err() != nil {
++			return nil, false, ctx.Err()
++		}
++		var exit *exec.ExitError
++		if err == nil || stdout.capped || difference && errors.As(err, &exit) && exit.ExitCode() == 1 {
++			return stdout.buf.Bytes(), stdout.capped, nil
++		}
++		if strings.Contains(stderr.String(), "not a git repository") {
++			return nil, false, domain.ErrNotRepository
++		}
++		return nil, false, fmt.Errorf("git %s: %w: %s", args[0], err, firstLine(stderr.String()))
++	}
++	resolve := func(where string, args ...string) (string, error) {
++		out, capped, err := query(where, args, gitMaxProbe, false)
++		if capped {
++			return "", fmt.Errorf("git reference output exceeded the limit")
++		}
++		return strings.TrimSuffix(string(out), "\n"), err
++	}
++	root, err := resolve(dir, "rev-parse", "--show-toplevel")
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	upstream, err := resolve(root, "rev-parse", "--verify", "@{upstream}")
++	if err != nil {
++		// Colocated Jujutsu repositories commonly leave HEAD detached.
++		// Their configured remote default is the explicit comparison base.
++		_, headErr := resolve(root, "symbolic-ref", "--quiet", "HEAD")
++		var exit *exec.ExitError
++		if errors.As(headErr, &exit) && exit.ExitCode() == 1 {
++			upstream, err = resolve(root, "rev-parse", "--verify", "refs/remotes/origin/HEAD")
++		}
++	}
++	if err != nil {
++		return domain.GitResult{}, fmt.Errorf("remote base is unavailable; configure upstream, or origin/HEAD for detached HEAD, on the computer: %w", err)
++	}
++	base, err := resolve(root, "merge-base", "HEAD", upstream)
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	tracked, capped, err := query(root, []string{"diff", base, "--"}, r.maxBytes, false)
++	if err != nil || capped {
++		return domain.GitResult{Output: string(tracked), Truncated: capped}, err
++	}
++	var patch bytes.Buffer
++	patch.Write(tracked)
++	paths, listingCapped, err := query(root, []string{"ls-files", "--others", "--exclude-standard", "-z"}, gitMaxOutput, false)
++	if err != nil {
++		return domain.GitResult{}, err
++	}
++	if listingCapped {
++		paths = paths[:bytes.LastIndexByte(paths, 0)+1]
++	}
++	for _, file := range strings.Split(string(paths), "\x00") {
++		if file == "" {
++			continue
++		}
++		// ls-files may name an untracked nested repository as a directory.
++		info, err := os.Lstat(root + "/" + file)
++		if os.IsNotExist(err) {
++			continue // changed between the listing and the read
++		}
++		if err != nil {
++			return domain.GitResult{}, err
++		}
++		if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
++			continue
++		}
++		remaining := r.maxBytes - patch.Len()
++		if remaining <= 0 {
++			return domain.GitResult{Output: patch.String(), Truncated: true}, nil
++		}
++		out, capped, err := query(root, []string{"diff", "--no-index", "--", os.DevNull, "./" + file}, remaining, true)
++		if err != nil {
++			return domain.GitResult{}, err
++		}
++		patch.Write(out)
++		if capped {
++			return domain.GitResult{Output: patch.String(), Truncated: true}, nil
++		}
++	}
++	return domain.GitResult{Output: strings.TrimRight(patch.String(), "\n"), Truncated: listingCapped}, nil
++}
+diff --git a/internal/adapters/system/git_remote_test.go b/internal/adapters/system/git_remote_test.go
+--- /dev/null
++++ b/internal/adapters/system/git_remote_test.go
+@@ -0,0 +1,172 @@
++package system
++
++import (
++	"bytes"
++	"context"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"runtime"
++	"strings"
++	"testing"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++var remoteDiffArgs = []string{"diff", "--merge-base", "@{upstream}", "--"}
++
++func TestGitRemoteDiffIncludesAllLocalChangesAndPreservesIndex(t *testing.T) {
++	dir := gitRepo(t)
++	run := func(args ...string) []byte {
++		t.Helper()
++		cmd := exec.Command("git", args...)
++		cmd.Dir = dir
++		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com",
++			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com", "GIT_CONFIG_NOSYSTEM=1", "HOME="+dir)
++		out, err := cmd.CombinedOutput()
++		if err != nil {
++			t.Fatalf("git %v: %v: %s", args, err, out)
++		}
++		return out
++	}
++	write := func(name, text string) {
++		t.Helper()
++		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o600); err != nil {
++			t.Fatal(err)
++		}
++	}
++	run("branch", "upstream")
++	run("checkout", "-q", "upstream")
++	write("remote-only.txt", "REMOTE_ONLY_MUST_NOT_APPEAR\n")
++	run("add", "remote-only.txt")
++	run("commit", "-q", "-m", "remote changes")
++	run("checkout", "-q", "main")
++	run("config", "branch.main.remote", ".")
++	run("config", "branch.main.merge", "refs/heads/upstream")
++	write("a.txt", "one\nLOCAL_COMMIT\n")
++	run("add", "a.txt")
++	run("commit", "-q", "-m", "not pushed")
++	write("a.txt", "one\nLOCAL_COMMIT\nSTAGED_CHANGE\n")
++	run("add", "a.txt")
++	write("a.txt", "one\nLOCAL_COMMIT\nSTAGED_CHANGE\nUNSTAGED_CHANGE\n")
++	write("--new file.txt", "UNTRACKED_CHANGE\n")
++	write(".gitignore", "ignored.txt\n")
++	write("ignored.txt", "IGNORED_MUST_NOT_APPEAR\n")
++	external := filepath.Join(t.TempDir(), "outside")
++	if err := os.WriteFile(external, []byte("OUTSIDE_CONTENT_MUST_NOT_APPEAR"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Symlink(external, filepath.Join(dir, "link")); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.Mkdir(filepath.Join(dir, "subdir"), 0o700); err != nil {
++		t.Fatal(err)
++	}
++	beforeStatus := run("status", "--porcelain")
++	beforeIndex, err := os.ReadFile(filepath.Join(dir, ".git", "index"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	r := NewGitRunner(nil)
++	res, err := r.Run(context.Background(), filepath.Join(dir, "subdir"), remoteDiffArgs)
++	if err != nil || res.Truncated {
++		t.Fatalf("remote diff: %+v, %v", res, err)
++	}
++	for _, want := range []string{"LOCAL_COMMIT", "STAGED_CHANGE", "UNSTAGED_CHANGE", "UNTRACKED_CHANGE"} {
++		if !strings.Contains(res.Output, want) {
++			t.Errorf("missing %s", want)
++		}
++	}
++	for _, unwanted := range []string{"REMOTE_ONLY_MUST_NOT_APPEAR", "IGNORED_MUST_NOT_APPEAR", "OUTSIDE_CONTENT_MUST_NOT_APPEAR"} {
++		if strings.Contains(res.Output, unwanted) {
++			t.Errorf("unexpected content: %s", unwanted)
++		}
++	}
++	afterIndex, err := os.ReadFile(filepath.Join(dir, ".git", "index"))
++	if err != nil || !bytes.Equal(beforeIndex, afterIndex) {
++		t.Fatalf("real index changed: %v", err)
++	}
++	if !bytes.Equal(beforeStatus, run("status", "--porcelain")) {
++		t.Fatal("working tree or staging state changed")
++	}
++	r.maxBytes = 40
++	limited, err := r.Run(context.Background(), dir, remoteDiffArgs)
++	if err != nil || !limited.Truncated || len(limited.Output) > 40 {
++		t.Fatalf("output cap: %+v, %v", limited, err)
++	}
++}
++
++func TestGitRemoteDiffMissingUpstream(t *testing.T) {
++	dir := gitRepo(t)
++	_, err := NewGitRunner(nil).Run(context.Background(), dir, remoteDiffArgs)
++	if err == nil || !strings.Contains(err.Error(), "upstream") {
++		t.Fatalf("missing upstream: %v", err)
++	}
++}
++
++func TestGitRemoteDiffDetachedHeadUsesRemoteDefault(t *testing.T) {
++	dir := gitRepo(t)
++	for _, args := range [][]string{
++		{"update-ref", "refs/remotes/origin/main", "HEAD"},
++		{"symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"},
++		{"checkout", "--detach", "-q"},
++	} {
++		cmd := exec.Command("git", args...)
++		cmd.Dir = dir
++		if out, err := cmd.CombinedOutput(); err != nil {
++			t.Fatalf("git %v: %v: %s", args, err, out)
++		}
++	}
++	res, err := NewGitRunner(nil).Run(context.Background(), dir, remoteDiffArgs)
++	if err != nil || !strings.Contains(res.Output, "+two") {
++		t.Fatalf("detached repository diff: %+v, %v", res, err)
++	}
++}
++
++func TestGitRemoteDiffMissingBinary(t *testing.T) {
++	r := NewGitRunner(nil)
++	r.bin = "no-such-git-command"
++	_, err := r.Run(context.Background(), t.TempDir(), remoteDiffArgs)
++	if err != domain.ErrGitMissing {
++		t.Fatalf("missing git: %v", err)
++	}
++}
++
++func TestGitRemoteDiffDoesNotRunRepositoryPrograms(t *testing.T) {
++	if runtime.GOOS == "windows" {
++		t.Skip("Unix script fixture")
++	}
++	dir := gitRepo(t)
++	configure := func(args ...string) {
++		t.Helper()
++		cmd := exec.Command("git", args...)
++		cmd.Dir = dir
++		if out, err := cmd.CombinedOutput(); err != nil {
++			t.Fatalf("git %v: %v: %s", args, err, out)
++		}
++	}
++	configure("branch", "upstream")
++	configure("config", "branch.main.remote", ".")
++	configure("config", "branch.main.merge", "refs/heads/upstream")
++	marker := filepath.Join(t.TempDir(), "ran")
++	script := filepath.Join(t.TempDir(), "hook")
++	if err := os.WriteFile(script, []byte("#!/bin/sh\necho ran > "+marker+"\n"), 0o700); err != nil {
++		t.Fatal(err)
++	}
++	for _, key := range []string{"core.fsmonitor", "diff.external", "diff.evil.textconv", "filter.evil.clean", "filter.evil.process"} {
++		configure("config", key, script)
++	}
++	if err := os.WriteFile(filepath.Join(dir, ".gitattributes"), []byte("*.txt diff=evil filter=evil\n"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.WriteFile(filepath.Join(dir, "new.txt"), []byte("new text\n"), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	res, err := NewGitRunner(nil).Run(context.Background(), dir, remoteDiffArgs)
++	if err != nil || !strings.Contains(res.Output, "new text") {
++		t.Fatalf("safe remote diff: %+v, %v", res, err)
++	}
++	if _, err := os.Stat(marker); !os.IsNotExist(err) {
++		t.Fatal("a repository-defined program ran")
++	}
++}
+diff --git a/internal/app/inbound.go b/internal/app/inbound.go
+--- a/internal/app/inbound.go
++++ b/internal/app/inbound.go
+@@ -18,10 +18,10 @@
+ 
+ // helpText is the command list shown by /help in a topic and in General.
+ const helpText = `Commands
+-/screen [N|all]: for idle or done OpenCode, Codex, Antigravity, Pi or Muse, post its last reply when available (up to 5 messages); otherwise the visible screen; with N the screen's last N lines, with "all" everything since your last message
+-/keys k1 k2 ...: send raw keys to the agent (esc, enter, y, 1 ...)
++/screen [N|all]: for idle or done OpenCode, Codex, Antigravity, Pi or Muse, post its complete last reply when available; otherwise the visible screen; with N the screen's last N lines, with "all" everything since your last message
++/keys k1 k2 ...: send raw keys to the agent (esc, enter, y, 1 ...); /keys shift+left opens queued Codex questions
+ /focus: bring the agent's pane to the front in Herdr
+-/git status | diff [staged] | log [N]: git in the agent's directory; long output arrives as a file
++/git status | diff [staged|remote] | log [N]: git in the agent's directory; remote includes local commits, working changes and untracked files since the upstream merge base (last fetch); long output arrives as a file
+ /stop: send esc to the agent (soft cancel of the running turn or dialog)
+ /interrupt: send ctrl+c to the agent (hard interrupt)
+ /close: close the agent's pane after a Yes/No confirmation
+@@ -1301,6 +1301,9 @@
+ 		ext = ".patch"
+ 	}
+ 	caption := fmt.Sprintf("git %s · %d lines", strings.Join(spec.Args, " "), lines)
++	if len(spec.Args) == 4 && spec.Args[1] == "--merge-base" {
++		caption = fmt.Sprintf("local diff since remote merge base (last fetch; includes untracked) · %d lines", lines)
++	}
+ 	if res.Truncated {
+ 		caption += ", truncated"
+ 	}
+diff --git a/internal/app/inbound_git_remote_test.go b/internal/app/inbound_git_remote_test.go
+--- /dev/null
++++ b/internal/app/inbound_git_remote_test.go
+@@ -0,0 +1,27 @@
++package app
++
++import (
++	"strings"
++	"testing"
++
++	"github.com/permgps/herdr-telegram-agents/internal/domain"
++)
++
++func TestInboundGitRemoteAsDocument(t *testing.T) {
++	f := newBridgeFixture(t)
++	gitAgent(t, f)
++	text := strings.Repeat("+local change\n", 400)
++	f.git.SetResult(domain.GitResult{Output: text})
++	if err := f.in.HandleTopic(f.ctx, topicMsg(101, 7, "/git diff remote")); err != nil {
++		t.Fatal(err)
++	}
++	calls := f.git.Calls()
++	if len(calls) != 1 || strings.Join(calls[0].Args, " ") != "diff --merge-base @{upstream} --" {
++		t.Fatalf("unexpected git request: %+v", calls)
++	}
++	docs := f.tg.Documents()
++	if len(docs) != 1 || !strings.HasSuffix(docs[0].Name, ".patch") || string(docs[0].Data) != text ||
++		!strings.Contains(docs[0].Caption, "includes untracked") || !strings.Contains(docs[0].Caption, "last fetch") {
++		t.Fatal("missing complete patch or upstream caption")
++	}
++}
+diff --git a/docs/commands.md b/docs/commands.md
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -82,6 +82,20 @@
+ exited agent get `agent has exited`. Only the configured group and the operator
+ ids from setup are accepted; everything else is dropped and logged.
+ 
++For queued Codex questions (the screen says `shift+← to answer`), send
++`/keys shift+left`, then `/screen`. Use `/keys up` or `/keys down` to
++select an answer and `/keys enter` to confirm it. These raw keys also work
++while Codex reports working; a plain digit in that state would be a new prompt.
++
++`/git diff remote` shows the local side since the merge base with the current
++branch's upstream: unpushed commits, staged and unstaged edits, and untracked
++files that Git does not ignore. It uses the tracking reference from the last
++`git fetch`, does not fetch or modify the real index, and does not enter nested
++repositories or submodules. With detached HEAD (including colocated Jujutsu
++repositories), it uses the configured `origin/HEAD` instead of an upstream.
++An unavailable comparison base returns a setup hint.
++Large patches arrive as files under the same 5 MB output limit as other diffs.
++
+ ## Claude Code commands
+ 
+ The four Claude Code commands are typed verbatim through `agent.prompt`, so

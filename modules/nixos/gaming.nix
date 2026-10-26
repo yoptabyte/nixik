@@ -1,10 +1,11 @@
 { config, lib, pkgs, inputs, ... }:
 let
   cachyos = import inputs.nix-cachyos-kernel.src;
-  # Keep the cached upstream kernel, but build external modules (NVIDIA, etc.)
+  # Keep the pinned upstream kernel, but build external modules (NVIDIA, etc.)
   # with this system's pinned nixpkgs and driver versions.
   cachyosKernel = cachyos.outputs.packages.${pkgs.stdenv.hostPlatform.system}.linux-cachyos-bore;
   goverlay-fixed = pkgs.callPackage ../../packages/goverlay.nix { };
+  godot-fixed = pkgs.callPackage ../../packages/godot.nix { };
   game-run = pkgs.writeShellScriptBin "game-run" ''
     ${lib.optionalString config.hardware.nvidia.prime.offload.enable ''
       export __NV_PRIME_RENDER_OFFLOAD=1
@@ -63,15 +64,32 @@ let
   };
 in
 {
+  nixpkgs.overlays = [
+    (_final: prev: {
+      pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+        (_pythonFinal: pythonPrev: {
+          pyrate-limiter = pythonPrev.pyrate-limiter.overridePythonAttrs (old: {
+            # Wall-clock assertions fail under build load: Redis took 87ms
+            # against 50ms, and multiprocessing took 276ms against 275ms.
+            disabledTests = (old.disabledTests or [ ]) ++ [
+              "test_limiter_async_factory_get_weight0"
+              "test_mp_bucket_async"
+            ];
+          });
+        })
+      ];
+      aggregateModules = import ../../packages/aggregate-kernel-modules.nix {
+        inherit lib;
+        inherit (prev) aggregateModules;
+        kernel = cachyosKernel;
+      };
+    })
+  ];
+
   # Generic x86-64 BORE variant: usable on both Linux laptops without AVX
   # requirements or LTO complications for out-of-tree NVIDIA modules.
   boot.kernelPackages = pkgs.linuxPackagesFor cachyosKernel;
   boot.kernel.sysctl."vm.max_map_count" = 1048576;
-
-  nix.settings = {
-    extra-substituters = [ "https://attic.xuyh0120.win/lantian" ];
-    extra-trusted-public-keys = [ "lantian:EeAUQ+W+6r7EtwnmYjeVwx5kOGEBpjlBfPlzGlTNvHc=" ];
-  };
 
   programs.steam = {
     enable = true;
@@ -84,7 +102,7 @@ in
   environment.systemPackages = with pkgs; [
     # Game engines
     unityhub-wrapped  # Unity Hub (wrapped with libs)
-    godot_4           # Godot Engine 4.x
+    godot-fixed      # Godot Engine 4.x with the required HarfBuzz vector library
 
     # Wine / Proton (run Windows applications)
     wineWow64Packages.full  # Wine (WoW64, full build)
