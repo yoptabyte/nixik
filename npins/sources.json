@@ -35,9 +35,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "4cd448d5b3220b8bbccdb6e7e8185b515f63a776",
-      "url": "https://github.com/feel-co/hjem/archive/4cd448d5b3220b8bbccdb6e7e8185b515f63a776.tar.gz",
-      "hash": "sha256-xj1hq1P05Lekx9tAtyJGSMFw8Z5oK4jh+n7Qr0Q1m5k="
+      "revision": "d219ef55ab7311d884cf33e114561082fec95f34",
+      "url": "https://github.com/feel-co/hjem/archive/d219ef55ab7311d884cf33e114561082fec95f34.tar.gz",
+      "hash": "sha256-BohcZsIqBOd6YL6+jUkdM4GE+aQc72E6yrqVyt1z5X4="
     },
     "hjem-rum": {
       "type": "Git",
